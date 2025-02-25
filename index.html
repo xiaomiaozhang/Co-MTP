@@ -90,7 +90,7 @@
                     <div class="publication-links">
                          <!-- Arxiv PDF link -->
                       <span class="link-block">
-                        <a href="static\pdfs\ICRA_cooperative_prediction.pdf" target="_blank"
+                        <a href="static/pdfs/ICRA_cooperative_prediction.pdf" target="_blank"
                         class="external-link button is-normal is-rounded is-dark">
                         <span class="icon">
                           <i class="fas fa-file-pdf"></i>
@@ -237,122 +237,68 @@
 </section>
 <!-- End Method -->
 
-
-<!-- Image carousel -->
-<section class="hero is-small">
-  <div class="hero-body">
-    <div class="container">
-      <div id="results-carousel" class="carousel results-carousel">
-       <div class="item">
-        <!-- Your image here -->
-        <img src="static/images/carousel1.jpg" alt="MY ALT TEXT"/>
-        <h2 class="subtitle has-text-centered">
-          First image description.
-        </h2>
-      </div>
-      <div class="item">
-        <!-- Your image here -->
-        <img src="static/images/carousel2.jpg" alt="MY ALT TEXT"/>
-        <h2 class="subtitle has-text-centered">
-          Second image description.
-        </h2>
-      </div>
-      <div class="item">
-        <!-- Your image here -->
-        <img src="static/images/carousel3.jpg" alt="MY ALT TEXT"/>
-        <h2 class="subtitle has-text-centered">
-         Third image description.
-       </h2>
-     </div>
-     <div class="item">
-      <!-- Your image here -->
-      <img src="static/images/carousel4.jpg" alt="MY ALT TEXT"/>
-      <h2 class="subtitle has-text-centered">
-        Fourth image description.
-      </h2>
-    </div>
-  </div>
-</div>
-</div>
-</section>
-<!-- End image carousel -->
-
-
-
-
-<!-- Youtube video -->
-<section class="hero is-small is-light">
-  <div class="hero-body">
-    <div class="container">
-      <!-- Paper video. -->
-      <h2 class="title is-3">Video Presentation</h2>
-      <div class="columns is-centered has-text-centered">
-        <div class="column is-four-fifths">
-          
-          <div class="publication-video">
-            <!-- Youtube embed code here -->
-            <iframe src="https://www.youtube.com/embed/JkaxUblCGz0" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+<!-- Experiment -->
+<section class="hero teaser">
+  <div class="container full-container">
+    <div class="column is-four-fifths">
+      <h2 class="title is-4">Experiment</h2>
+      <div class="content has-text-justified">
+        <div class="gif-container">
+          <!-- 每个 GIF 和标题的容器 -->
+          <div class="gif-item">
+            <img src="static/images/visualize_pra_1001.gif" alt="MY ALT TEXT" class="gif-image"/>
+            <p class="gif-caption">(a)</p>
           </div>
+          <div class="gif-item">
+            <img src="static/images/visualize_pra_10025.gif" alt="MY ALT TEXT" class="gif-image"/>
+            <p class="gif-caption">(b)</p>
+          </div>
+          <div class="gif-item">
+            <img src="static/images/visualize_pra_10058.gif" alt="MY ALT TEXT" class="gif-image"/>
+            <p class="gif-caption">(c)</p>
+          </div>
+          <div class="gif-item">
+            <img src="static/images/visualize_pra_10078.gif" alt="MY ALT TEXT" class="gif-image"/>
+            <p class="gif-caption">(d)</p>
+          </div>
+          <p>
+            <strong>Qualitative examples of Co-MTP on V2X-Seq dataset.</strong> The red box are AV, while the orange ones are the predicted targets. The history ground-truth are shown in blue, the predicted trajectories are shown in green, , and the future ground-truth are shown in brown.
+          <p>
         </div>
+        <p>
+          <!-- 其他内容 -->
+        </p>
       </div>
-    </div>
+    </div>  
   </div>
 </section>
-<!-- End youtube video -->
+<!-- End Experiment -->
 
+<style>
+  .gif-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0px; /* 调整 GIF 之间的间距 */
+  }
 
-<!-- Video carousel -->
-<section class="hero is-small">
-  <div class="hero-body">
-    <div class="container">
-      <h2 class="title is-3">Another Carousel</h2>
-      <div id="results-carousel" class="carousel results-carousel">
-        <div class="item item-video1">
-          <video poster="" id="video1" autoplay controls muted loop height="100%">
-            <!-- Your video file here -->
-            <source src="static/videos/carousel1.mp4"
-            type="video/mp4">
-          </video>
-        </div>
-        <div class="item item-video2">
-          <video poster="" id="video2" autoplay controls muted loop height="100%">
-            <!-- Your video file here -->
-            <source src="static/videos/carousel2.mp4"
-            type="video/mp4">
-          </video>
-        </div>
-        <div class="item item-video3">
-          <video poster="" id="video3" autoplay controls muted loop height="100%">\
-            <!-- Your video file here -->
-            <source src="static/videos/carousel3.mp4"
-            type="video/mp4">
-          </video>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-<!-- End video carousel -->
+  .gif-item {
+    flex: 1 1 calc(50% - 0px); /* 每行两个 GIF，减去间距 */
+    max-width: calc(50% - 0px); /* 确保每行只有两个 GIF */
+    text-align: center; /* 标题居中 */
+  }
 
+  .gif-image {
+    width: 100%; /* 让 GIF 填满容器宽度 */
+    height: auto; /* 保持比例 */
+    max-height: 600px; /* 设置最大高度，根据需要调整 */
+  }
 
-
-
-
-
-<!-- Paper poster -->
-<section class="hero is-small is-light">
-  <div class="hero-body">
-    <div class="container">
-      <h2 class="title">Poster</h2>
-
-      <iframe  src="static/pdfs/sample.pdf" width="100%" height="550">
-          </iframe>
-        
-      </div>
-    </div>
-  </section>
-<!--End paper poster -->
-
+  .gif-caption {
+    margin-top: 0px; /* 标题与 GIF 的间距 */
+    font-size: 14px; /* 标题字体大小 */
+    color: #333; /* 标题颜色 */
+  }
+</style>
 
 <!--BibTex citation -->
   <section class="section" id="BibTeX">
