@@ -242,6 +242,36 @@
     <div class="column is-four-fifths">
       <h2 class="title is-4">Experiment</h2>
       <div class="content has-text-justified">
+        <div class="has-text-centered">
+          <img src="static/images/main_result.png" alt="Description of the new image" class="new-image_1"/>
+          <p style="text-align: justify;">
+            <strong>Performance comparison on the V2X-Seq dataset.</strong> TNT, HiVT and V2X-Graph are existing methods on the V2X-Seq dataset. Co-HTTP is the baseline model, simplified from our Co-MTP model. The framework Co-MTP ranks first across minADE/minFDE/MR in the benchmark of the dataset.
+          </p>
+        </div>
+
+        <!-- 增加空行 -->
+        <br> 
+
+        <div class="has-text-centered">
+          <img src="static/images/ablation_study.png" alt="Description of the new image" class="new-image_2"/>
+          <p style="text-align: justify;">
+            <strong>Results of model ablation study.</strong> We examine the effectiveness of multiview data processing strategies and the decoder, assessing Co-MTP variations separately in history and future time dimensions.
+          </p>
+        </div>
+        
+        <!-- 增加空行 -->
+        <br> 
+
+        <div class="has-text-centered">
+          <!-- 图片容器 -->
+          <div style="display: flex; justify-content: center; gap: 20px;">
+            <img src="static/images/noise.png" alt="Description of image 1" style="max-width: 47%;"/>
+            <img src="static/images/time_delay.png" alt="Description of image 2" style="max-width: 47%;"/>
+          </div>
+          <p style="text-align: justify; margin-top: 0px;">
+            <strong>Robustness assessment.</strong> We conduct robustness assessments by introducing noise and communication delays, assuming a positional deviation of 0.2 meters and a time delay of 0.5 seconds. We design experiments using the same Co-MTP model base, alongside two variants: Co-MTP-no fusion, which excludes the future fusion, and Co-HTTP-nofut, which simply stitches the trajectory without future information.
+          </p>
+        </div>
         <div class="gif-container">
           <!-- 每个 GIF 和标题的容器 -->
           <div class="gif-item">
@@ -279,6 +309,16 @@
     flex-wrap: wrap;
     gap: 0px; /* 调整 GIF 之间的间距 */
   }
+
+  .new-image_1 {
+  max-width: 53%; /* 图片最大宽度 */
+  margin: 20px 0; /* 上下边距 */
+}
+
+.new-image_2 {
+  max-width: 100%; /* 图片最大宽度 */
+  margin: 20px 0; /* 上下边距 */
+}
 
   .gif-item {
     flex: 1 1 calc(50% - 0px); /* 每行两个 GIF，减去间距 */
