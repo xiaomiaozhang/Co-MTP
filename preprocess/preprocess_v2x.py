@@ -170,8 +170,6 @@ def screen_completed_track(current_frame_index, track_fea, now_mask,  now_index2
             if len(hist_frame) == t_h and len(fut_frame) == t_f:
                 if max(now_index2id[current_index - t_h:current_index + t_f + 1]) > 200000:  # todo:车路协同数据处理的时候注释掉
                     continue
-                # if max(now_index2id[current_index - len(hist_frame):current_index + len(fut_frame) + 1]) < 200000:  # todo:车路协同数据处理的时候解除注释
-                #     tar_id_lis.append(now_index2id[current_index])
                 completed_current_index.append(current_index)
                 completed_current_frame.append(current_frame)
                 now_obs_fea_padded = np.concatenate([track_fea[current_index - t_h:current_index + 1, :], now_mask[:, np.newaxis]], axis=-1)
@@ -189,8 +187,6 @@ def screen_completed_track(current_frame_index, track_fea, now_mask,  now_index2
             if hist_frame[0] == current_frame - t_h and fut_frame[-1] == current_frame + t_f:
                 if max(now_index2id[current_index - len(hist_frame):current_index + len(fut_frame) + 1]) > 200000:  # todo:车路协同数据处理的时候注释掉
                     continue
-                # if max(now_index2id[current_index - len(hist_frame):current_index + len(fut_frame) + 1]) < 200000:  #todo:车路协同数据处理的时候解除注释
-                #     tar_id_lis.append(now_index2id[current_index])
                 completed_current_index.append(current_index)
                 completed_current_frame.append(current_frame)
                 start_index = np.where(track_fea[:, 0] == hist_frame[0])[0][0]
@@ -297,7 +293,6 @@ def mask_fut_traj(traj, frame):
 
 
 def process(iter, x):
-#    iter = '31849.csv'
     lane_fea = copy.deepcopy(new_lane_fea)
     polygon_fea = copy.deepcopy(all_polygon_fea)
     car_df = pd.read_csv(os.path.join(car_data_path, iter))
@@ -305,7 +300,6 @@ def process(iter, x):
     # co_df = pd.read_csv(os.path.join(co_data_path, iter))
     car_raw_df = pd.read_csv(os.path.join(car_raw_path, iter))
     light_df = pd.read_csv(os.path.join(traffic_light_path, iter))
-    # print(len(lane_fea), len(polygon_fea))
     AV_df = car_raw_df.loc[car_raw_df.tag == 'AV']
     car_df = car_df[[
         'header.lidar_timestamp',
@@ -349,11 +343,7 @@ def process(iter, x):
         'x', 'y', 'z', 'length', 'width', 'height', 'theta',
         'v_x', 'v_y', 'tag'
     ]
-    # co_df = co_df[[
-    #     'timestamp', 'from_side', 'type', 'sub_type', 'x', 'y', 'z',
-    #     'length', 'width', 'height', 'theta', 'v_x', 'v_y', 'tag',
-    #     'car_side_id', 'road_side_id'
-    # ]]
+    
     road_df.drop(road_df.loc[road_df.type == 'EGO_VEHICLE', 'type'].index, inplace=True)
     road_df.type = road_df.type.map(lambda x: name2id[x])
     car_df.type = car_df.type.map(lambda x: name2id[x])
@@ -361,8 +351,6 @@ def process(iter, x):
 
     #提取AV中的有效信息
     AV_fea = process_AV_df(AV_df, t_min)
-
-
 
     tar_id_dic = {}
     car_obs_fea_dic = {}
@@ -397,20 +385,15 @@ def process(iter, x):
                                         road_df.v_x.astype(float), road_df.v_y.astype(float), road_df.theta.astype(float),
                                         road_df.length.astype(float), road_df.width.astype(float), road_df.height.astype(float), road_df.id.astype(int), road_df.type.astype(int)]))
     del road_df
-    # co_track = np.transpose(np.array([round((co_df.timestamp.astype(float) - t_min) / frame), co_df.x.astype(float), co_df.y.astype(float), co_df.z.astype(float),
-    #                                     co_df.v_x.astype(float), co_df.v_y.astype(float), co_df.theta.astype(float),
-    #                                     co_df.length.astype(float), co_df.width.astype(float), co_df.height.astype(float),
-    #                                     co_df.from_side.astype(int), co_df.car_side_id.astype(int), co_df.road_side_id.astype(int)]))
-    # del co_df
-    target_id = np.unique(car_track[np.where(agent_tag[0, :] == 1)[0], -2])    #todo
+    
+    target_id = np.unique(car_track[np.where(agent_tag[0, :] == 1)[0], -2])   
     other_id = np.unique(car_track[np.where(agent_tag[0, :] == 6)[0], -2])
     AV_id = np.unique(car_track[np.where(agent_tag[0, :] == 0)[0], -2])
     for frame_index in range(30, 50):
-        #       AV_current_frame.append(AV_fea[frame_index, 0])
         current_frame = AV_fea[frame_index, 0]
         AV_pos = AV_fea[frame_index, [1, 2]]
         AV_fut = AV_fea[frame_index + 1:frame_index + t_f + 1, :][np.newaxis, :, :]
-        # tar_id_dic[frame_index] = car_track[np.where(car_track[:, 0] == frame_index)[0], -1]
+
         car_obs_fea_dic[frame_index] = car_track[np.where((car_track[:, 0] >= (frame_index - t_h)) & (car_track[:, 0] <= frame_index))[0]]
         car_obs_fea_dic[frame_index], car_obs_mask_dic[frame_index], car_obs_ids_dic[frame_index], car_type_dic[frame_index] = mask_obs_traj(car_obs_fea_dic[frame_index], frame_index)
         road_obs_fea_dic[frame_index] = road_track[np.where((road_track[:, 0] >= (frame_index - t_h)) & (road_track[:, 0] <= frame_index))[0]]
@@ -437,11 +420,6 @@ def process(iter, x):
         #     return
         tar_id_dic[frame_index] = target_id
 
-        # obs_to_all = [np.where(car_obs_ids_dic[frame_index] == tar_id)[0][0] for tar_id in tar_id_dic[frame_index]]
-        # car_obs_fea_dic[frame_index] = car_obs_fea_dic[frame_index][obs_to_all]
-        # car_obs_mask_dic[frame_index] = car_obs_mask_dic[frame_index][obs_to_all]
-        # car_type_dic[frame_index] = car_type_dic[frame_index][obs_to_all]
-        # other_fut_ids_dic[frame_index] = np.setdiff1d(label_ids_dic[frame_index], tar_id_dic[frame_index])
         other_fut_ids_dic[frame_index] = other_id
         fut_to_all = [np.where(label_ids_dic[frame_index] == other_id)[0][0] for other_id in other_fut_ids_dic[frame_index] if other_id in label_ids_dic[frame_index]]
         other_fut_fea_dic[frame_index] = label_dic[frame_index][fut_to_all]
@@ -454,8 +432,6 @@ def process(iter, x):
 
     ##处理交通信号灯信息
     light_df.state = light_df.color_1.map(lambda x: color2num[x])
-    #light_data = np.concatenate([np.array(light_df.timestamp), np.array(light_df.x), np.array(light_df.y), np.array(light_df.lane_id),
-    #                             np.array(light_df.color_1), np.array(light_df.remain_1), np.array(light_df.color_2), np.array(light_df.remain_2), np.array(light_df.color_3), np.array(light_df.remain_3)], axis=1)
     light_data = np.concatenate([np.array(light_df.timestamp)[:, np.newaxis], np.array(light_df.x)[:, np.newaxis], np.array(light_df.y)[:, np.newaxis], np.array(light_df.lane_id)[:, np.newaxis], np.array(light_df.state)[:, np.newaxis]], axis=1)
     for index in range(len(light_data)):
         light_data[index, 0] = int(np.round((light_data[index, 0] - t_min) / frame))
@@ -488,24 +464,8 @@ def process(iter, x):
         for _ in new_lane_id_lis:
             if _ < lane_num:
                 lane_fea[_]["signal"].append(all_dynamic_map_fea[old_lane_id])
-#
-#     # #把与该场景无关的道路信息给删除
-#     # m = 0
-#     # while m < len(lane_fea):
-#     #     if lane_fea[m]['xy'][:, 0].min() > (x_max + 900) or lane_fea[m]['xy'][:, 0].max() < (x_min - 900) or lane_fea[m]['xy'][:, 1].min() > (y_max + 500) or lane_fea[m]['xy'][:, 1].max() < (y_min - 900):
-#     #         del lane_fea[m]
-#     #     else:
-#     #         m = m + 1
-#     # n = 0
-#     # #把与该场景无关的几何信息给删除
-#     # while n < len(polygon_fea):
-#     #     if polygon_fea[n][1][:, 0].min() > (x_max + 900) or polygon_fea[n][1][:, 0].max() < (x_min - 900) or polygon_fea[n][1][:, 1].min() > (y_max + 500) or polygon_fea[n][1][:, 1].max() < (y_min - 900):
-#     #         del polygon_fea[n]
-#     #     else:
-#     #         n = n + 1
+
     all_agent_map_size_dic = {k: np.ones(v.shape[0])*600.0 for k, v in car_obs_fea_dic.items()}   #todo:999.0可根据需求更改
-#    all_agent_map_size = np.ones(all_agent_feature.shape[0]) * 999.0
-#    num_of_agent_dic = {k: v.shape[0] for k, v in all_agent_feature_dic.items()}
     # ## Split Too Much Agent
     final_lane_fea_dic = {}
     final_polygon_fea_dic = {}
@@ -523,7 +483,6 @@ def process(iter, x):
             i = lane_new_index_to_final_index_dic[frame_index][lane_new_index]
             for transfer_key in ["xy", "type", "signal", "yaw"]:
                 if transfer_key == "signal":
-#                    if len(lane_fea[lane_new_index][transfer_key]) != 0: print(lane_fea[lane_new_index][transfer_key])
                     final_lane_fea_dic[frame_index][i][transfer_key] = [] if len(lane_fea[lane_new_index][transfer_key]) == 0 else lane_fea[lane_new_index][transfer_key][0][frame_index]
                 else:
                     final_lane_fea_dic[frame_index][i][transfer_key] = lane_fea[lane_new_index][transfer_key]
@@ -569,10 +528,6 @@ def process(iter, x):
     all_data["tar_id"] = tar_id_dic
     all_data["label"] = label_dic  # 所有预测目标的真实未来信息
     all_data["label_mask"] = label_mask_dic  # 所有预测目标关于未来50帧轨迹是否有效的掩码
-    # for frame_index in current_frame_index:    #todo:车路协同解除注释
-    #     if len(all_other_label_dic[frame_index]) != 0:  # all_other_label是除了预测目标之外的其他车辆在未来时间的真实x,y坐标
-    #         all_other_label_dic[frame_index] = np.concatenate(all_other_label_dic[frame_index], axis=0)
-    #         all_other_label_mask_dic[frame_index] = np.stack(all_other_label_mask_dic[frame_index], axis=0)
     all_data["other_fut_fea"] = other_fut_fea_dic
     all_data["other_fut_mask"] = other_fut_mask_dic
     all_data["other_fut_ids"] = other_fut_ids_dic
@@ -583,116 +538,10 @@ def process(iter, x):
 
     return all_data, {frame_index: car_obs_fea_dic[frame_index].shape[0] + len(final_lane_fea_dic[frame_index]) + len(final_polygon_fea_dic[frame_index]) for frame_index in range(30, 50)}
 
-
-
-    ##画出junction图像
-    # junction_scene_id = []
-    # lane_scene_id = []
-    lane = map_data['lane']
-    junction = map_data['junction']
-    stop_line = map_data['stop_line']
-    crosswalk = map_data['crosswalk']
-    # x_values = []
-    # y_values = []
-#     plt.figure()
-#     for k, v in junction.items():
-# #        junction_scene_id.append(k)
-#         co = v['polygon']
-#         x_values = [point[0] for point in co]
-#         y_values = [point[1] for point in co]
-#         plt.plot(x_values, y_values, marker='o', linestyle='-', color='gray', markersize=0.2, linewidth=0.1)
-#     plt.xlabel('X')
-#     plt.ylabel('Y')
-#     plt.title('Junction')
-#     plt.grid(False)
-#     plt.show()
-    #绘制道路路线图
-
-    fig, ax = plt.subplots()
-    ax.set_xlim(x_min-20, x_max+20)          #10083:ax.set_xlim(417500, 417800)   10000:ax.set_xlim(417800, 418000)  10013:ax.set_xlim(417750, 418950)   10008:ax.set_xlim(417700, 418000)
-    ax.set_ylim(y_min-20, y_max+20)
- #    for k, v in tqdm(lane.items()):
- # ##       lane_scene_id.append(k.split("_")[0])
- # #        centerline_co = v['centerline']
- # #        x_values_1 = [point[0] for point in centerline_co]
- # #        y_values_1 = [point[1] for point in centerline_co]
- # #        plt.plot(x_values_1, y_values_1, marker='o', linestyle='-', color='black', markersize=0.1, linewidth=0.1)
- #        left_boundary_co = v['left_boundary']
- #        x_values = [point[0] for point in left_boundary_co]
- #        y_values = [point[1] for point in left_boundary_co]
- #        plt.plot(x_values, y_values, marker='o', linestyle='None', color='gray', markersize=0.1, linewidth=0.1)
- #        right_boundary_co = v['right_boundary']
- #        x_values = [point[0] for point in right_boundary_co]
- #        y_values = [point[1] for point in right_boundary_co]
- #        plt.plot(x_values, y_values, marker='o', linestyle='None', color='gray', markersize=0.1, linewidth=0.1)
- #    plt.xlabel('X')
- #    plt.ylabel('Y')
- #    plt.grid(False)  # 添加网格线
- #    plt.show()
-
-    ##绘制车辆动态轨迹图
-    #得到每个completed轨迹完整的坐标图
-    lines = []
-    rects = []
-    texts = []
-    def update(frame):
-        for rect in rects:
-            rect.remove()
-        rects.clear()
-        for text in texts:
-            text.remove()
-        texts.clear()
-        car_trajs = car_track[np.where(car_track[:, 0] == frame)]
-        road_trajs = road_track[np.where(road_track[:, 0] == frame)]
-        if len(car_trajs) == 0 and len(road_trajs) == 0:
-            return rects
-        if len(car_trajs) != 0:
-            car_pos = car_trajs[:, 1:3]
-            car_bboxes = car_trajs[:, 7:10]
-            car_theta = car_trajs[:, 6]
-            car_ids = car_trajs[:, -1]
-            for car_index, car_bbox in enumerate(car_bboxes):
-                car_id = car_ids[car_index]
-                half_length = car_bbox[1] / 2
-                half_width = car_bbox[2] / 2
-                x1 = car_pos[car_index][0] - half_length * np.cos(car_theta[car_index]) + half_width * np.sin(car_theta[car_index])
-                y1 = car_pos[car_index][1] - half_length * np.sin(car_theta[car_index]) - half_width * np.cos(car_theta[car_index])
-                rect = Rectangle((x1, y1), car_bbox[0], car_bbox[1], angle=car_theta[car_index] * (180 / math.pi), edgecolor='orange', facecolor='orange', alpha=0.5)
-                ax.add_patch(rect)
-                rects.append(rect)
-                text = ax.text(x1, y1 + 2, str(int(car_id)), fontsize=5, color="orange")
-                texts.append(text)
-        if len(road_trajs) != 0:
-            road_pos = road_trajs[:, 1:3]
-            road_bboxes = road_trajs[:, 7:10]
-            road_theta = road_trajs[:, 6]
-            road_ids = road_trajs[:, -1]
-            for road_index, road_bbox in enumerate(road_bboxes):
-                road_id = road_ids[road_index]
-                half_length = road_bbox[1] / 2
-                half_width = road_bbox[2] / 2
-                x1 = road_pos[road_index][0] - half_length * np.cos(road_theta[road_index]) + half_width * np.sin(road_theta[road_index])
-                y1 = road_pos[road_index][1] - half_length * np.sin(road_theta[road_index]) - half_width * np.cos(road_theta[road_index])
-                rect = Rectangle((x1, y1), road_bbox[0], road_bbox[1], angle=road_theta[road_index] * (180 / math.pi), edgecolor='blue', facecolor='blue', alpha=0.5)
-                ax.add_patch(rect)
-                rects.append(rect)
-                text = ax.text(x1, y1 - 4, str(int(road_id)), fontsize=5, color="blue")
-                texts.append(text)
-        return rects, texts
-
-    # 创建动画
-    ani = FuncAnimation(fig=fig, func=update, frames=np.arange(0, 100), interval=100, blit=False)
-    ani.save("/media/ps/ba50700a-668e-4255-9ec6-a877cfa97e41/zxy/visualization/uncompleted_traj/scene_choose/visualize_{}.gif".format(iter), fps=10, dpi=500)
-    # 显示动画
-    plt.show()
-
-
-
-
 def parse_args():
     """Parse input arguments."""
     parser = argparse.ArgumentParser(description='process fused v2x-seq to prediction')
-    parser.add_argument("--data_root", type=str, default="/data/lixc/hdgt/visual_raw_data/")      #autodl: "/root/autodl-tmp/project/HDGT-main/dataset/V2X-Seq-TFD-Example/"
+    parser.add_argument("--data_root", type=str, default="/data/lixc/Co-MTP/visual_raw_data/")     
     parser.add_argument("--split", help="split.", type=str, default='val')  # train; val; test_obs
 
     args = parser.parse_args()
@@ -720,9 +569,8 @@ if __name__ == '__main__':
 
     car_data_path = os.path.join(args.data_root, 'cooperative-vehicle-infrastructure/tfd_car', args.split, 'data')
     road_data_path = os.path.join(args.data_root, 'cooperative-vehicle-infrastructure/tfd_road', args.split, 'data')
-    # co_data_path = os.path.join(args.data_root, 'cooperative-vehicle-infrastructure/cooperative-trajectories', args.split, 'data')
     traffic_light_path = os.path.join(args.data_root, 'cooperative-vehicle-infrastructure/traffic-light/', args.split)
-    data_dest = os.path.join(args.data_root, 'cooperative-vehicle-infrastructure/process_newv2x_rock1', args.split, 'data')  #存储数据处理的地址  # 'data'  #路端存储数据的地址：process_for_prediction_road
+    data_dest = os.path.join(args.data_root, 'cooperative-vehicle-infrastructure/process_newv2x', args.split, 'data')  #存储数据处理的地址  # 'data'  #路端存储数据的地址：process_for_prediction_road
 
     data_ls_1 = os.listdir(car_data_path)
     data_ls_2 = os.listdir(road_data_path)
@@ -732,19 +580,6 @@ if __name__ == '__main__':
     if not os.path.exists(data_dest):
         os.makedirs(data_dest)
 
-    # num_of_element_dic = {0: [1], 2: [6], 1: [9], 5: [6], 4: [3]}
-    # keys_array = np.array(list(num_of_element_dic.keys()))
-    # sorted_indexes = np.argsort(keys_array)
-    # num = 0
-    # num_of_element_dic = {0: 1, 2: 6, 1: 9, 5: 6, 4: 3}
-    # c = sorted_indexes[0]
-    # b = keys_array[c]
-    # a = num_of_element_dic[b]
-    # num_element = []
-    # for index in sorted_indexes:
-    #     num_element.append(num_of_element_dic[keys_array[index]])
-    # with open(os.path.join(data_dest, "number_of_dataset.pkl"), "wb") as g:
-    #     pickle.dump(np.array(np.stack([num_of_element_dic[keys_array[index]] for index in sorted_indexes])), g)
 
     with open('/data/lixc/hdgt/V2X-Seq-TFD/map_files/yizhuang_PEK_vector_map.json', 'r') as file:     #autodl: /root/autodl-tmp/project/HDGT-main/dataset/V2X-Seq-TFD-Example/map_files/yizhuang_PEK_vector_map.json     #/data/lixc/hdgt/V2X-Seq-TFD/map_files/yizhuang_PEK_vector_map.json   #3090: /data/zhangxy/hdgt/HDGT-main/dataset/V2X-Seq-TFD/map_files/yizhuang_PEK_vector_map.json
         map_data = json.load(file)
@@ -794,8 +629,6 @@ if __name__ == '__main__':
             gc.collect()
     pool.close()
     pool.join()
-    print("Preprocess Done")
-
     print("Preprocess Done")
 
     # num_of_element_lis = list(itertools.chain(*num_of_element_lis))
