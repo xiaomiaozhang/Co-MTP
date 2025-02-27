@@ -205,8 +205,7 @@ def process(iter, x):
         'v_x',
         'v_y'
     ]]
-    # road_df.timestamp, road_df.x, road_df.y, road_df.z, road_df.length, road_df.width, road_df.height, road_df.theta, road_df.v_x, road_df.v_y = road_df.timestamp.astype('float32'), road_df.x.astype('float32'), road_df.y.astype('float32'), road_df.z.astype('float32'), road_df.length.astype('float32'),\
-    #                                                                                                                                              road_df.width.astype('float32'), road_df.height.astype('float32'), road_df.theta.astype('float32'), road_df.v_x.astype('float32'), road_df.v_y.astype('float32')
+    
     road_df.type = road_df.type.map(lambda x: name2id[x])
     road_df.id, road_df.type = road_df.id.astype('int32'), road_df.type.astype('int32')
     t_min, t_max = min(road_df.timestamp), max(road_df.timestamp)
@@ -324,7 +323,6 @@ def process(iter, x):
         all_predict_agent_type_dic[frame_index] = all_predict_agent_type
         all_object_id_dic[frame_index] = all_object_id
         all_agent_type_dic[frame_index] = np.array(all_predict_agent_type_dic[frame_index])  # np.array(all_predict_agent_type_dic[frame_index] + all_other_agent_type_dic[frame_index])
-#        print(all_predict_agent_feature_dic[frame_index])
         all_agent_feature_dic[frame_index] = np.stack(all_predict_agent_feature_dic[frame_index], axis=0)
 
     ##处理交通信号灯信息
@@ -375,7 +373,7 @@ def process(iter, x):
         lane_new_index_to_final_index_dic[frame_index] = {}
         if len(lane_fea) > 0:
             new_dist_between_agent_lane = (euclid(all_agent_feature_dic[frame_index][:, -1, [1, 2]][:, np.newaxis, np.newaxis, :], np.stack([_["xy"] for _ in lane_fea])[np.newaxis, :, :, :]).min(2) < all_agent_map_size_dic[frame_index][:, np.newaxis])
-            nearby_lane_new_index_lis = np.where(new_dist_between_agent_lane)[1].tolist()  # 11.20：看到这里了，小喵得加速啦！！！
+            nearby_lane_new_index_lis = np.where(new_dist_between_agent_lane)[1].tolist()  
             nearby_lane_new_index_lis = np.unique(np.array(nearby_lane_new_index_lis))
             lane_new_index_to_final_index_dic[frame_index] = {index_i: i for i, index_i in enumerate(nearby_lane_new_index_lis)}  # lane只要和场景中的任一一辆有效车的距离在限制范围内，那这个lane就保留下来；新的index是与agent_id有关系的
         final_lane_fea_dic[frame_index] = [{} for _ in range(len(lane_new_index_to_final_index_dic[frame_index]))]
@@ -432,7 +430,7 @@ def process(iter, x):
 def parse_args():
     """Parse input arguments."""
     parser = argparse.ArgumentParser(description='process road v2x-seq to prediction')
-    parser.add_argument("--data_root", type=str, default="/home/zhangxy/HDGT-main/dataset/V2X-Seq-TFD-Example/")      #autodl: "/root/autodl-tmp/project/HDGT-main/dataset/V2X-Seq-TFD-Example/"
+    parser.add_argument("--data_root", type=str, default="/home/zhangxy/Co-MTP/dataset/V2X-Seq-TFD/")      
     parser.add_argument("--split", help="split.", type=str, default='val')  # train; val; test_obs
 
     args = parser.parse_args()
@@ -464,12 +462,10 @@ if __name__ == '__main__':
 
     data_ls = os.listdir(data_path)
 
-#    car_path = os.path.join(args.data_root, 'cooperative-vehicle-infrastructure/vehicle-trajectories', args.split)
-
     if not os.path.exists(data_dest):
         os.makedirs(data_dest)
 
-    with open('/media/ps/ba50700a-668e-4255-9ec6-a877cfa97e41/zxy/V2X-Seq-TFD/map_files/yizhuang_PEK_vector_map.json', 'r') as file:     #autodl: /root/autodl-tmp/project/HDGT-main/dataset/V2X-Seq-TFD-Example/map_files/yizhuang_PEK_vector_map.json     #/data/lixc/hdgt/V2X-Seq-TFD/map_files/yizhuang_PEK_vector_map.json   #3090: /data/zhangxy/hdgt/HDGT-main/dataset/V2X-Seq-TFD/map_files/yizhuang_PEK_vector_map.json
+    with open('/media/ps/ba50700a-668e-4255-9ec6-a877cfa97e41/zxy/V2X-Seq-TFD/map_files/yizhuang_PEK_vector_map.json', 'r') as file:    
         map_data = json.load(file)
     new_lane_fea, old_lane_id_to_new_lane_index_lis, all_polygon_fea = maps_process(map_data)
     lane_num = len(new_lane_fea)
@@ -480,25 +476,7 @@ if __name__ == '__main__':
     epo = 0
     save_count = 0
     data_num = len(tasks)
-    # with multiprocessing.Pool(processes=8) as pool:
-    #     while 50 * epo < data_num:
-    #         start_index = 50 * epo
-    #         end_index = min((epo + 1) * 50, data_num)
-    #         result = pool.starmap(process, tasks[start_index:end_index])  # 使用 starmap 来传递多个参数
-    #         result = list(filter(lambda x: x is not None, result))
-    #         with open(os.path.join(data_dest, str(epo) + ".pkl"), "wb") as g:
-    #             pickle.dump(list(map(itemgetter(0), result)), g)
-    #
-    #         with open(os.path.join(data_dest, str(epo) + "_number_of_dataset" + ".pkl"), "wb") as g:
-    #             pickle.dump(np.array(np.stack(list(map(itemgetter(1), result)))), g)
-    #         print("保存成功！")
-    #         #            save_count = save_count + len(result)
-    #         epo = epo + 1
-    #         del result
-    #         gc.collect()
-    # pool.close()
-    # pool.join()
-    # print("Dataset Processing Done!!!")
+    
     ##train&val时用这个
  #    with multiprocessing.Pool(processes=8) as pool:
  #        while 500 * epo < data_num:
@@ -546,8 +524,5 @@ if __name__ == '__main__':
             gc.collect()
     pool.close()
     pool.join()
-    print("Preprocess Done")
-    # with open(os.path.join(data_dest, "number_of_dataset.pkl"), "wb") as g:
-    #     pickle.dump(np.array(np.stack(num_of_element_lis)), g)
-    #
-    # print("Dataset Processing Done!!!")
+
+    print("Dataset Processing Done!!!")
