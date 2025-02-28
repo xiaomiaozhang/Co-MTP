@@ -31,9 +31,6 @@ frame = 0.1
 interaction_radius = 50
 perception_radius = 50
 processed_count = multiprocessing.Value('i', 0)
-# manager = multiprocessing.Manager()
-# num_of_element_lis = manager.list()
-# result_lis = manager.list()
 
 def euclid(label, pred):
     return np.sqrt((label[..., 0]-pred[...,0])**2 + (label[...,1]-pred[...,1])**2)    #[..., 0]指取最里层所有的0号元素
@@ -119,7 +116,6 @@ def screen_completed_track(current_frame_index, track_fea, now_mask,  now_index2
                 v_xy = line[1:, 3:5]
                 cumsum_step = np.cumsum(v_xy / 10.0, axis=0) + line[0, 0:2][np.newaxis, :]
                 line[1:, 0:2] = cumsum_step
- #               now_mask[break_point_i_lis[bi][0] + 1:break_point_i_lis[bi][1]] = 0
                 line_lis.append(line[1:-1, :])
                 if bi == len(break_point_i_lis) - 1:
                     line_lis.append(track_fea[break_point_j_lis[bi][1]:len(all_obs_frame), 1:7])
@@ -131,7 +127,6 @@ def screen_completed_track(current_frame_index, track_fea, now_mask,  now_index2
             cumsum_step = np.cumsum((-v_xy / 10.0)[np.newaxis, :].repeat(start_step, axis=0), axis=0)[::-1, :] + padded_fea[0, 0:2][np.newaxis, :]
             padded_fea = np.concatenate([padded_fea[0][np.newaxis, :].repeat(start_step, axis=0), padded_fea], axis=0)
             padded_fea[:start_step, :2] = cumsum_step
- #           now_mask[:start_step] = 0
         if end_step < 100 - t_f - 1:
             end_step_fea = track_fea[len(all_obs_frame) - 1, :7]
             need_frames = 100 - t_f - end_step_fea[0] - 1
@@ -154,7 +149,6 @@ def screen_completed_track(current_frame_index, track_fea, now_mask,  now_index2
                 padded_fea = np.concatenate(
                     [padded_fea, padded_fea[-1][np.newaxis, :].repeat(100 - t_f - end_step - 1, axis=0)], axis=0)
                 padded_fea[end_step + 1:, :2] = cumsum_step
- #           now_mask[end_step + 1:] = 0
         all_obs_fea_padded = np.concatenate([np.array([i for i in range(0, 100 - t_f)])[:, np.newaxis], padded_fea, np.array([track_fea[:, -3].mean()] * (100 - t_f))[:, np.newaxis],
             np.array([track_fea[:, -2].mean()] * (100 - t_f))[:, np.newaxis], np.array([track_fea[:, -1].mean()] * (100 - t_f))[:, np.newaxis]], axis=-1)  # 可观察到的长度取平均后进行复制
     for current_index in current_frame_index[:, 0]:
@@ -168,7 +162,7 @@ def screen_completed_track(current_frame_index, track_fea, now_mask,  now_index2
         if real_completed:
             beginning_and_end = False
             if len(hist_frame) == t_h and len(fut_frame) == t_f:
-                if max(now_index2id[current_index - t_h:current_index + t_f + 1]) > 200000:  # todo:车路协同数据处理的时候注释掉
+                if max(now_index2id[current_index - t_h:current_index + t_f + 1]) > 200000: 
                     continue
                 completed_current_index.append(current_index)
                 completed_current_frame.append(current_frame)
@@ -185,7 +179,7 @@ def screen_completed_track(current_frame_index, track_fea, now_mask,  now_index2
             if len(hist_frame) == 0 or len(fut_frame) == 0:
                 continue
             if hist_frame[0] == current_frame - t_h and fut_frame[-1] == current_frame + t_f:
-                if max(now_index2id[current_index - len(hist_frame):current_index + len(fut_frame) + 1]) > 200000:  # todo:车路协同数据处理的时候注释掉
+                if max(now_index2id[current_index - len(hist_frame):current_index + len(fut_frame) + 1]) > 200000: 
                     continue
                 completed_current_index.append(current_index)
                 completed_current_frame.append(current_frame)
@@ -402,7 +396,6 @@ def process(iter, x):
         label_dic[frame_index], label_mask_dic[frame_index], label_ids_dic[frame_index], label_type_dic[frame_index] = mask_fut_traj(label_dic[frame_index], frame_index)
         AV_fut_dic[frame_index] = AV_fea[np.where((AV_fea[:, 0] > frame_index) & (AV_fea[:, 0] <= (frame_index + t_f)))[0]]
 
-        # tar_id_dic[frame_index] = np.intersect1d(car_obs_ids_dic[frame_index], label_ids_dic[frame_index])
         #当把所有标agent的都看作target时，解除注释  todo
         # agent_id = np.setdiff1d(car_obs_ids_dic[frame_index], other_id)
         # target_id = np.setdiff1d(agent_id, AV_id)
@@ -475,7 +468,7 @@ def process(iter, x):
         lane_new_index_to_final_index_dic[frame_index] = {}
         if len(lane_fea) > 0:
             new_dist_between_agent_lane = (euclid(car_obs_fea_dic[frame_index][:, -1, [1, 2]][:, np.newaxis, np.newaxis, :], np.stack([_["xy"] for _ in lane_fea])[np.newaxis, :, :, :]).min(2) < all_agent_map_size_dic[frame_index][:, np.newaxis])
-            nearby_lane_new_index_lis = np.where(new_dist_between_agent_lane)[1].tolist()  # 11.20：看到这里了，小喵得加速啦！！！
+            nearby_lane_new_index_lis = np.where(new_dist_between_agent_lane)[1].tolist() 
             nearby_lane_new_index_lis = np.unique(np.array(nearby_lane_new_index_lis))
             lane_new_index_to_final_index_dic[frame_index] = {index_i: i for i, index_i in enumerate(nearby_lane_new_index_lis)}  # lane只要和场景中的任一一辆有效车的距离在限制范围内，那这个lane就保留下来；新的index是与agent_id有关系的
         final_lane_fea_dic[frame_index] = [{} for _ in range(len(lane_new_index_to_final_index_dic[frame_index]))]
@@ -581,7 +574,7 @@ if __name__ == '__main__':
         os.makedirs(data_dest)
 
 
-    with open('/data/lixc/hdgt/V2X-Seq-TFD/map_files/yizhuang_PEK_vector_map.json', 'r') as file:     #autodl: /root/autodl-tmp/project/HDGT-main/dataset/V2X-Seq-TFD-Example/map_files/yizhuang_PEK_vector_map.json     #/data/lixc/hdgt/V2X-Seq-TFD/map_files/yizhuang_PEK_vector_map.json   #3090: /data/zhangxy/hdgt/HDGT-main/dataset/V2X-Seq-TFD/map_files/yizhuang_PEK_vector_map.json
+    with open('/data/lixc/Co-MTP/V2X-Seq-TFD/map_files/yizhuang_PEK_vector_map.json', 'r') as file:     
         map_data = json.load(file)
     new_lane_fea, old_lane_id_to_new_lane_index_lis, all_polygon_fea = maps_process(map_data)
     lane_num = len(new_lane_fea)
