@@ -585,6 +585,8 @@ if __name__ == '__main__':
     epo = 0
     save_count = 0
     data_num = len(tasks)
+
+    
     # with multiprocessing.Pool(processes=8) as pool:
     #     while 1 * epo < data_num:
     #         start_index = 1 * epo
