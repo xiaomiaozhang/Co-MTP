@@ -26,9 +26,6 @@ frame = 0.1
 interaction_radius = 50
 perception_radius = 50
 processed_count = multiprocessing.Value('i', 0)
-# manager = multiprocessing.Manager()
-# num_of_element_lis = manager.list()
-# result_lis = manager.list()
 
 def euclid(label, pred):
     return np.sqrt((label[..., 0]-pred[...,0])**2 + (label[...,1]-pred[...,1])**2)    #[..., 0]指取最里层所有的0号元素
@@ -82,7 +79,6 @@ def screen_completed_track(current_frame_index, track_fea, now_mask,  now_index2
                 v_xy = line[1:, 3:5]
                 cumsum_step = np.cumsum(v_xy / 10.0, axis=0) + line[0, 0:2][np.newaxis, :]
                 line[1:, 0:2] = cumsum_step
- #               now_mask[break_point_i_lis[bi][0] + 1:break_point_i_lis[bi][1]] = 0
                 line_lis.append(line[1:-1, :])
                 if bi == len(break_point_i_lis) - 1:
                     line_lis.append(track_fea[break_point_j_lis[bi][1]:len(all_obs_frame), 1:7])
@@ -94,7 +90,6 @@ def screen_completed_track(current_frame_index, track_fea, now_mask,  now_index2
             cumsum_step = np.cumsum((-v_xy / 10.0)[np.newaxis, :].repeat(start_step, axis=0), axis=0)[::-1, :] + padded_fea[0, 0:2][np.newaxis, :]
             padded_fea = np.concatenate([padded_fea[0][np.newaxis, :].repeat(start_step, axis=0), padded_fea], axis=0)
             padded_fea[:start_step, :2] = cumsum_step
- #           now_mask[:start_step] = 0
         if end_step < 100 - t_f - 1:
             end_step_fea = track_fea[len(all_obs_frame) - 1, :7]
             need_frames = 100 - t_f - end_step_fea[0] - 1
@@ -117,7 +112,6 @@ def screen_completed_track(current_frame_index, track_fea, now_mask,  now_index2
                 padded_fea = np.concatenate(
                     [padded_fea, padded_fea[-1][np.newaxis, :].repeat(100 - t_f - end_step - 1, axis=0)], axis=0)
                 padded_fea[end_step + 1:, :2] = cumsum_step
- #           now_mask[end_step + 1:] = 0
         all_obs_fea_padded = np.concatenate([np.array([i for i in range(0, 100 - t_f)])[:, np.newaxis], padded_fea, np.array([track_fea[:, -3].mean()] * (100 - t_f))[:, np.newaxis],
             np.array([track_fea[:, -2].mean()] * (100 - t_f))[:, np.newaxis], np.array([track_fea[:, -1].mean()] * (100 - t_f))[:, np.newaxis]], axis=-1)  # 可观察到的长度取平均后进行复制
     for current_index in current_frame_index[:, 0]:
@@ -291,7 +285,7 @@ def process(iter, x):
     all_agent_type_dic = {}
     all_agent_feature_dic = {}
 
-    #  AV_current_frame = []
+
     for frame_index in range(30, 50):
         pred_num[frame_index] = current_lis.count(frame_index)
 
@@ -327,8 +321,6 @@ def process(iter, x):
 
     ##处理交通信号灯信息
     light_df.state = light_df.color_1.map(lambda x: color2num[x])
-    # light_data = np.concatenate([np.array(light_df.timestamp), np.array(light_df.x), np.array(light_df.y), np.array(light_df.lane_id),
-    #                             np.array(light_df.color_1), np.array(light_df.remain_1), np.array(light_df.color_2), np.array(light_df.remain_2), np.array(light_df.color_3), np.array(light_df.remain_3)], axis=1)
     light_data = np.concatenate([np.array(light_df.timestamp)[:, np.newaxis], np.array(light_df.x)[:, np.newaxis], np.array(light_df.y)[:, np.newaxis], np.array(light_df.lane_id)[:, np.newaxis], np.array(light_df.state)[:, np.newaxis]], axis=1)
     for index in range(len(light_data)):
         light_data[index, 0] = int(np.round((light_data[index, 0] - t_min) / frame))
@@ -381,7 +373,6 @@ def process(iter, x):
             i = lane_new_index_to_final_index_dic[frame_index][lane_new_index]
             for transfer_key in ["xy", "type", "signal", "yaw"]:
                 if transfer_key == "signal":
-                    #                    if len(lane_fea[lane_new_index][transfer_key]) != 0: print(lane_fea[lane_new_index][transfer_key])
                     final_lane_fea_dic[frame_index][i][transfer_key] = [] if len(lane_fea[lane_new_index][transfer_key]) == 0 else lane_fea[lane_new_index][transfer_key][0][frame_index]
                 else:
                     final_lane_fea_dic[frame_index][i][transfer_key] = lane_fea[lane_new_index][transfer_key]
