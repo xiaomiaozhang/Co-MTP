@@ -67,11 +67,7 @@ class PredictionFusion(Fusion):
 
             # MATCHED TRACKLETS:
             if track1_index in v_ind:
-                # tracklet2 = tracks2[matched_ids[list(itertools.chain(matched_ids[:, 0] == track1_index)).index(True)][1]]
                 tracklet2 = tracks2[r_ind[v_ind == track1_index]][0]
-
-                # if (tracklet1[2],tracklet2[2]) in cannot_fusion_v2i:
-                #     continue
 
                 #road side points
                 self.new_road_outputs.append(tracklet2)
@@ -211,7 +207,7 @@ class PredictionFusion(Fusion):
                     tracks[np.where(tracks[:, 0] == cur_time)[0][i]][25] = host_car_pose[1]    #default:host_car_pose[1]
 
                 #this is ego
-                tracks[np.where(tracks[:, 0] == cur_time)[0][min_dist_index]][1] = 5  #todo:对角线最短的车辆为ego？
+                tracks[np.where(tracks[:, 0] == cur_time)[0][min_dist_index]][1] = 5  
 
     def cvt_format_prediction2tracking(self,tracks1):
         rows,cols = tracks1.shape
@@ -230,10 +226,6 @@ class PredictionFusion(Fusion):
         new_tracks1[:,23] = -1  
         new_tracks1[:,24:26] = tracks1[:,24:26]
         new_tracks1[:,27] = tracks1[:,27]
-
-        # tracks_ids = np.sort(np.unique(new_tracks1[:,2]))
-        # for track_id in tracks_ids:
-        #     cur_tracks = new_tracks1[new_tracks1[:,2] == track_id]
         return new_tracks1
 
     def gen_data(self,tracks1_data,tracks2_data):
@@ -333,24 +325,17 @@ class PredictionFusion(Fusion):
         tracks2_ids = np.unique(tracks2_data[:,2])
 
         tracks1_frame_id = np.sort(np.unique(tracks1_data[:, 0]))
-        # tracks1_frame = np.sort(np.unique(tracks1_data[:, 21]))
-        # tracks2_frame = np.sort(np.unique(tracks2_data[:, 21]))
-        # start_frame = min(tracks1_frame.min(), tracks2_frame.min())
-        # tracks1_data[:, 0] = (tracks1_data[:, 21] - start_frame) * 10  #采样频率为10hz
-        # tracks2_data[:, 0] = (tracks2_data[:, 21] - start_frame) * 10
-
+    
         for track1_frame_id in tracks1_frame_id:
             track1_frame_id = int(track1_frame_id)
             tracks1 = tracks1_data[tracks1_data[:, 0] == track1_frame_id]
             av_cur = AV[track1_frame_id]
-            # tracks1_tocken = tracks1_data_tocken[tracks1_data[:,0] == track1_frame_id]
-        #
+           
             if track1_frame_id in self.veh2inf_frame_id:
                 #coop pairs
                 track2_frame_id = self.veh2inf_frame_id[track1_frame_id]
                 tracks2 = tracks2_data[tracks2_data[:,0] == track2_frame_id]
-                # tracks2_tocken = tracks2_data_tocken[tracks2_data[:,0] == track2_frame_id]
-        #
+               
                 if len(tracks1) > 0 and len(tracks2):
                     #begin fusion
 
@@ -361,51 +346,6 @@ class PredictionFusion(Fusion):
 
                     self.find_ego_vehicle(np.array([host_car_pose_x,host_car_pose_y],dtype=float),tracks2)
                     tracks2_data[tracks2_data[:, 0] == track2_frame_id] = tracks2
-        #
-        #             #fusion
-        #             self.fuse_tracks(tracks1,tracks2,cannot_fusion_v2i)
-        #
-        #         elif len(tracks1) > 0:
-        #             print('only veh tracks,no inf tracks! veh frame is: ',track1_frame_id)
-        #             #no road in self.time_step, find pairs by host car coordinates (optional)
-        #
-        #             #only car_obstacles
-        #             self.fuse_tracks(tracks1,[],cannot_fusion_v2i)
-        #
-        #         elif len(tracks2) > 0:
-        #             print('only inf tracks,no veh tracks! inf frame is: ',track2_frame_id)
-        #
-        #             #only car_obstacles
-        #             self.fuse_tracks([],tracks2,cannot_fusion_v2i)
-        #             self.new_road_outputs.append(tracks2)
-        #         else:
-        #             continue
-        #     else:
-        #         #only car_obstacles
-        #         self.fuse_tracks(tracks1,[],cannot_fusion_v2i)
-        #
-        # for track_id in tracks2_ids:
-        #     if track_id not in self.id_log['set2'][:, 0]:
-        #         # print('track2 %s not been fused!'%(track_id))
-        #         tracks = tracks2_data[tracks2_data[:,2] == track_id]
-        #         tracks_frameid = np.sort(np.unique(tracks[:,0]))
-        #
-        #         self.id_log['set2'] = np.vstack([self.id_log['set2'], [track_id, self.id_counter, tracks_frameid[0]]])
-        #
-        #         for cur_track in tracks:
-        #             tracklet = copy.deepcopy(cur_track)
-        #             tracklet[2] = self.id_counter
-        #
-        #             tracklet = np.concatenate([tracklet,[2, -1, cur_track[2]]]) # from: 1:car side, 2:road side; car side id; road side id
-        #
-        #             self.new_tracks_fusion.append(tracklet)
-        #             self.new_road_outputs.append(cur_track)
-        #
-        #         self.id_counter += 1
-        #
-        #
-        # self.new_tracks_fusion = np.array(self.new_tracks_fusion)
-        # self.new_road_outputs = np.array(self.new_road_outputs)
 
         tracks1_frame = np.sort(np.unique(tracks1_data[:, 21]))
         tracks2_frame = np.sort(np.unique(tracks2_data[:, 21]))
@@ -517,7 +457,7 @@ def parse_args():
     """Parse input arguments."""
     parser = argparse.ArgumentParser(description='mathing fusion')
 
-    parser.add_argument("--data_root", type=str, default="/data/lixc/hdgt/visual_raw_data/")      #autodl: /root/autodl-tmp/project/HDGT-main/dataset/V2X-Seq-TFD-Example/
+    parser.add_argument("--data_root", type=str, default="/data/lixc/hdgt/visual_raw_data/")     
     parser.add_argument("--split", help="split.", type=str, default='val') #train; val; test_obs
  
     args = parser.parse_args()
