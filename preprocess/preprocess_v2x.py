@@ -534,7 +534,7 @@ def process(iter, x):
 def parse_args():
     """Parse input arguments."""
     parser = argparse.ArgumentParser(description='process fused v2x-seq to prediction')
-    parser.add_argument("--data_root", type=str, default="/data/lixc/Co-MTP/visual_raw_data/")     
+    parser.add_argument("--data_root", type=str, default="/home/zhangxy/Co-MTP/dataset/V2X-Seq-TFD/")     
     parser.add_argument("--split", help="split.", type=str, default='val')  # train; val; test_obs
 
     args = parser.parse_args()
@@ -563,7 +563,7 @@ if __name__ == '__main__':
     car_data_path = os.path.join(args.data_root, 'cooperative-vehicle-infrastructure/tfd_car', args.split, 'data')
     road_data_path = os.path.join(args.data_root, 'cooperative-vehicle-infrastructure/tfd_road', args.split, 'data')
     traffic_light_path = os.path.join(args.data_root, 'cooperative-vehicle-infrastructure/traffic-light/', args.split)
-    data_dest = os.path.join(args.data_root, 'cooperative-vehicle-infrastructure/process_newv2x', args.split, 'data')  #存储数据处理的地址  # 'data'  #路端存储数据的地址：process_for_prediction_road
+    data_dest = os.path.join(args.data_root, 'cooperative-vehicle-infrastructure/process_v2x_for_prediction', args.split, 'data')  #存储数据处理的地址 
 
     data_ls_1 = os.listdir(car_data_path)
     data_ls_2 = os.listdir(road_data_path)
