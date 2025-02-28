@@ -1,6 +1,5 @@
 import os
 os.environ["NCCL_P2P_DISABLE"] = "1"
-#os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
 import random
 from typing import DefaultDict
 import warnings
@@ -21,9 +20,7 @@ import torch.multiprocessing as mp
 from torch.utils.tensorboard import SummaryWriter
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
-#from waymo_data.collate_func import *
 import io
-# from metricss_soft_map import soft_map
 import scipy.special
 import scipy.interpolate as interp
 import time
@@ -33,9 +30,9 @@ parser = argparse.ArgumentParser('Interface for HDGT Training')
 ##### Optimizer - Scheduler
 parser.add_argument('--lr', type=float, default=2.5e-3, help='learning rate')
 parser.add_argument('--weight_decay', type=float, default=1e-6, help='weight decay')
-parser.add_argument('--batch_size', type=int, default=24, help='batch size')         #default=16
+parser.add_argument('--batch_size', type=int, default=24, help='batch size')       
 parser.add_argument('--val_batch_size', type=int, default=24, help='batch size')
-parser.add_argument('--n_epoch', type=int, default=45, help='number of epochs')      #default=30
+parser.add_argument('--n_epoch', type=int, default=45, help='number of epochs')     
 parser.add_argument('--warmup', type=float, default=1.0, help='the number of epoch for warmup')
 parser.add_argument('--lr_decay_epoch', type=str, default="4-8-16-24-26-30-34-38-46-52-56", help='the index of epoch where the lr decays to lr*0.5')
 parser.add_argument('--num_prediction', type=int,default=6, help='the number of modality')
@@ -43,7 +40,7 @@ parser.add_argument('--cls_weight', type=float,default=0.1, help='the weight of 
 parser.add_argument('--reg_weight', type=float,default=10.0, help='the weight of regression loss')
 
 #### Speed Up
-parser.add_argument('--num_of_gnn_layer', type=int, default=6, help='the number of HDGT layer')
+parser.add_argument('--num_of_gnn_layer', type=int, default=6, help='the number of GNN layer')
 parser.add_argument('--num_recurrent_layer', type=int, default=2, help='the number of m2m layer')
 parser.add_argument('--hidden_dim', type=int, default=256, help='init hidden dimension')
 parser.add_argument('--head_dim', type=int, default=32, help='the dimension of attention head')
@@ -58,7 +55,7 @@ parser.add_argument('--tensorboard', action="store_true", help='if use tensorboa
 
 #### Setting
 parser.add_argument('--agent_drop', type=float, default='0.0', help='the ratio of randomly dropping agent')
-parser.add_argument('--data_folder', type=str, default="hdgt_v2x_seq", help='training set')   #dufault=hdgt_waymo
+parser.add_argument('--data_folder', type=str, default="hdgt_v2x_seq", help='training set')   
 
 parser.add_argument('--refine_num', type=int, default=5, help='temporally refine the trajectory')
 parser.add_argument('--output_vel', type=str, default="True", help='output in form of velocity') 
@@ -66,8 +63,8 @@ parser.add_argument('--cumsum_vel', type=str, default="True", help='cumulate vel
 
 
 #### Initialize
-parser.add_argument('--checkpoint', type=str, default="/mnt/data/zhangxy/exp_25/Epoch_7_batch39.pt", help='load checkpoint')
-parser.add_argument('--start_epoch', type=int, default=6, help='the index of start epoch (for resume training)')   #default=1
+parser.add_argument('--checkpoint', type=str, default="None", help='load checkpoint')
+parser.add_argument('--start_epoch', type=int, default=1, help='the index of start epoch (for resume training)')   
 parser.add_argument('--dev_mode', type=str, default="False", help='develop_mode')
 
 parser.add_argument('--ddp_mode', type=str, default="True", help='False, True, multi_node')    #default="False"
@@ -75,11 +72,11 @@ parser.add_argument('--port', type=str, default="49196", help='DDP')      #defau
 
 parser.add_argument('--amp', type=str, default="none", help='type of fp16')    #default="none"
 
-parser.add_argument('--use_planning', action="store_false", help='if use planning coupled module (default: True)',default = False)
+parser.add_argument('--use_planning', action="store_false", help='if use planning coupled module (default: True)',default = True)
 parser.add_argument('--use_map', action="store_false", help='if use HD map', default = True)
-parser.add_argument('--v2x_prediction', action="store_false", help='if prediction by v2x (default: False)', default = False)
-parser.add_argument('--use_road_obs', action="store_false", help='if prediction by v2x (default: False)', default = False)
-parser.add_argument('--use_other_fut', action="store_false", help='if prediction by v2x (default: False)', default = False)
+parser.add_argument('--v2x_prediction', action="store_false", help='if prediction by v2x (default: False)', default = True)
+parser.add_argument('--use_road_obs', action="store_false", help='if prediction by v2x (default: False)', default = True)
+parser.add_argument('--use_other_fut', action="store_false", help='if prediction by v2x (default: False)', default = True)
 parser.add_argument('--road_obs_data_path', type=str, default="/home/lixc/HDGT_main/dataset/V2X-Seq-TFD-Example/cooperative-vehicle-infrastructure/process_newv2x_rock1/", help='the path of data')
 parser.add_argument('--road_prediction', action="store_false", help='if prediction by road (default: False)',default = False)
 
