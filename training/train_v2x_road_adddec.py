@@ -77,13 +77,13 @@ parser.add_argument('--use_map', action="store_false", help='if use HD map', def
 parser.add_argument('--v2x_prediction', action="store_false", help='if prediction by v2x (default: False)', default = True)
 parser.add_argument('--use_road_obs', action="store_false", help='if prediction by v2x (default: False)', default = True)
 parser.add_argument('--use_other_fut', action="store_false", help='if prediction by v2x (default: False)', default = True)
-parser.add_argument('--road_obs_data_path', type=str, default="/home/lixc/HDGT_main/dataset/V2X-Seq-TFD-Example/cooperative-vehicle-infrastructure/process_newv2x_rock1/", help='the path of data')
+parser.add_argument('--road_obs_data_path', type=str, default="/home/zhangxy/Co-MTP/dataset/V2X-Seq-TFD/cooperative-vehicle-infrastructure/process_road_for_v2x/", help='the path of data')
 parser.add_argument('--road_prediction', action="store_false", help='if prediction by road (default: False)',default = False)
 
 
 #### Log
 parser.add_argument('--val_every_train_step', type=int, default=-1, help='every number of training step to conduct one evaluation')   #default=-1
-parser.add_argument('--name', type=str, default="http_v2x_road_31", help='the name of this setting')      #default="hdgt_waymo_dev"
+parser.add_argument('--name', type=str, default="mtp_v2x", help='the name of this setting')     
 parser.add_argument('--data_path', type=str, default="/home/lixc/HDGT_main/dataset/V2X-Seq-TFD-Example/cooperative-vehicle-infrastructure/process_for_prediction_v2x_rock10/", help='the path of data')
 args = parser.parse_args()
 os.environ["DGLBACKEND"] = "pytorch"
