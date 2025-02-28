@@ -422,7 +422,7 @@ def parse_args():
     """Parse input arguments."""
     parser = argparse.ArgumentParser(description='process road v2x-seq to prediction')
     parser.add_argument("--data_root", type=str, default="/home/zhangxy/Co-MTP/dataset/V2X-Seq-TFD/")      
-    parser.add_argument("--split", help="split.", type=str, default='val')  # train; val; test_obs
+    parser.add_argument("--split", help="split.", type=str, default='train')  # train; val; test_obs
 
     args = parser.parse_args()
 
@@ -468,36 +468,6 @@ if __name__ == '__main__':
     save_count = 0
     data_num = len(tasks)
     
-    ##train&val时用这个
- #    with multiprocessing.Pool(processes=8) as pool:
- #        while 500 * epo < data_num:
- #            start_index = 500 * epo
- #            end_index = min((epo + 1) * 500, data_num)
- #            result = pool.starmap(process, tasks[start_index:end_index])  # 使用 starmap 来传递多个参数
- #            result = list(filter(lambda x: x is not None, result))
- #            for num in range(len(result)):
- #                with open(os.path.join(data_dest, str(save_count + num) + ".pkl"), "wb") as g:
- #                    pickle.dump(result[num][0], g)
- #            num_of_element_lis.append([e[1] for e in result])
- #            print("保存成功！")
- #            save_count = save_count + len(result)
- #            epo = epo + 1
- #            del result
- #            gc.collect()
- #    pool.close()
- #    pool.join()
- #
- #    print("Preprocess Done")
- #
- #    num_of_element_lis = list(itertools.chain(*num_of_element_lis))
- #    with open(os.path.join(data_dest, "number_of_dataset.pkl"), "wb") as g:
- #        #pickle.dump(np.array(np.stack(num_of_element_lis)), g)
- #        pickle.dump(np.array(np.stack(num_of_element_lis)), g)
- # #       g.write(json_num.encode())
- #
- #    print("Dataset Processing Done!!!")
-
-    #test时用这个
     with multiprocessing.Pool(processes=8) as pool:
         while 500 * epo < data_num:
             start_index = 500 * epo
@@ -505,9 +475,9 @@ if __name__ == '__main__':
             result = pool.starmap(process, tasks[start_index:end_index])  # 使用 starmap 来传递多个参数
             result = list(filter(lambda x: x is not None, result))
             for num in range(len(result)):
-                with open(os.path.join(data_dest, result[num][2].split('.')[0] + ".pkl"), "wb") as g:
+                with open(os.path.join(data_dest, str(save_count + num) + ".pkl"), "wb") as g:
                     pickle.dump(result[num][0], g)
-            num_of_element_lis.append(list(map(itemgetter(1), result)))
+            num_of_element_lis.append([e[1] for e in result])
             print("保存成功！")
             save_count = save_count + len(result)
             epo = epo + 1
@@ -515,5 +485,13 @@ if __name__ == '__main__':
             gc.collect()
     pool.close()
     pool.join()
+ 
+    print("Preprocess Done")
+ 
+    num_of_element_lis = list(itertools.chain(*num_of_element_lis))
+    with open(os.path.join(data_dest, "number_of_dataset.pkl"), "wb") as g:
+        pickle.dump(np.array(np.stack(num_of_element_lis)), g)
 
     print("Dataset Processing Done!!!")
+
+
