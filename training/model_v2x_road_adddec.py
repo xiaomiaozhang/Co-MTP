@@ -63,7 +63,7 @@ class SEBasicBlock(nn.Module):
         if self.downsample is not None:
             identity = self.downsample(identity)
         out = self.conv1(self.act(self.bn1(x)))
-        out = self.conv2(self.act(self.bn2(out)))      #括号里为什么是x不是out???
+        out = self.conv2(self.act(self.bn2(out)))     
         if self.in_c == self.out_c:
             out = self.se(out)
             out = out + identity
@@ -72,7 +72,7 @@ class SEBasicBlock(nn.Module):
 
 class TemporalBlock(nn.Module):
     def __init__(self, inplanes, temporal_length, args):
-        super(TemporalBlock, self).__init__()                                   #11.22：看到这里啦，明天继续调试train.py
+        super(TemporalBlock, self).__init__()                                
         self.layers = [SEBasicBlock(in_c=inplanes, out_c=inplanes, temporal_length=temporal_length, stride=1)]
         self.layers += [SEBasicBlock(in_c=inplanes, out_c=inplanes, temporal_length=temporal_length, stride=2)]
         self.layers = nn.ModuleList(self.layers)
@@ -136,17 +136,7 @@ class AttentionTemporalEncoder(nn.Module):
         attention_output = torch.matmul(attention_weights, V)  # [batch_size, num_heads, seq_len, head_dim]
         attention_output = attention_output.transpose(1, 2).contiguous().view(x.shape[0], x.shape[-1], self.hidden_dim)
         output = self.out_linear(attention_output)  # [batch_size, seq_len, embed_dim
-        # last_true_index = [torch.where(mask[id, 0, 0, :] == 1)[0][-1] for id in range(mask.shape[0])]
-        # output = [output[id, last_true_index[id]] for id in range(mask.shape[0])]
-        # output = torch.stack(output, axis=0)
         output, _ = output.max(dim=1)
-        # x = x.permute(2, 0, 1)
-        # mask = ~mask.bool()
-        # # mask = mask.permute(1, 0)
-        # x = self.layer_norm(x)
-        # attn_output, _ = self.attention(x, x, x, key_padding_mask=mask)
-        # attn_output = attn_output.permute(1, 2, 0)
-        # output, _ = attn_output.max(dim=-1)
         return output
 
 class BN1D(nn.Module):
@@ -178,9 +168,6 @@ class MLP(nn.Module):
             self.norm = norm(d_in)
         else:
             self.norm = norm(d_hid)
-        #if dropout != 0.0:
-            #self.dropout = nn.Dropout(dropout)
-        #else:
         self.dropout = nn.Identity()
     def forward(self, x):
         if self.prenorm:
@@ -212,11 +199,10 @@ class Agent2embedding(nn.Module):
     def forward(self, input_dic, shared_coor_encoder):
         #0-2 x, y, z, 3-4 vx, vy, 5-6 cos, sin, 7-9 witdth, length, height 10 mask
         x = input_dic["graph_lis"].ndata["a_n_fea"]["agent"]
-#        x = x.to(torch.bfloat16) if torch.is_tensor(x) else x
         #z, vx, vy, cos, sin, width, length, height, mask
         coor_fea = shared_coor_encoder(x[..., :3])
         fea = torch.cat([coor_fea, x[..., 3:-1]], dim=-1)
-        fea = self.fea_MLP(fea)              #12.5：看到这里啦
+        fea = self.fea_MLP(fea)            
         return fea.transpose(1, 2)
 
 class Road2embedding(nn.Module):
@@ -231,12 +217,11 @@ class Road2embedding(nn.Module):
         #0-2 x, y, z, 3-4 vx, vy, 5-6 cos, sin, 7-9 witdth, length, height 10 mask
         x_fea = torch.empty((0, 16, self.input_dim-1))
         x = input_dic["graph_lis"].ndata["a_n_fea"]["road"]
-#        x = x.to(torch.bfloat16) if torch.is_tensor(x) else x
         #z, vx, vy, cos, sin, width, length, height, mask
         if x.shape[0] > 0:
             coor_fea = shared_coor_encoder(x[..., :3])
             x_fea = torch.cat([coor_fea, x[..., 3:]], dim=-1)
-            x_fea = self.fea_MLP(x_fea)              #12.5：看到这里啦
+            x_fea = self.fea_MLP(x_fea)             
         return x_fea.transpose(1, 2)
 
 ## Centerline (Lane) Embedding
@@ -252,7 +237,7 @@ class Lane2embedding(nn.Module):
         self.stop_fc = nn.Linear(args.hidden_dim//4, args.hidden_dim//4)
         self.signal_fc = nn.Linear(args.hidden_dim//4, args.hidden_dim//4)
         self.signal_emb = torch.nn.Embedding(num_embeddings=9, embedding_dim=args.hidden_dim//2)
-        self.signal_gru = torch.nn.GRU(input_size=args.hidden_dim//2, hidden_size=args.hidden_dim//2, num_layers=1, batch_first=True)    #GRU是RNN的一种
+        self.signal_gru = torch.nn.GRU(input_size=args.hidden_dim//2, hidden_size=args.hidden_dim//2, num_layers=1, batch_first=True)  
         
         ## [coor, type, stop_signal]
         self.lane_n_out_fc = MLP(d_in=args.hidden_dim+args.hidden_dim//4+self.hidden_dim//4*3+self.hidden_dim//2, d_hid=args.hidden_dim*4, d_out=args.hidden_dim, norm=BN1D)
@@ -270,7 +255,7 @@ class Lane2embedding(nn.Module):
 
         lane_n_num = coor_fea.shape[0]
         ## If there is no stop sign/traffic signal controlling the lane, the cooresponding features are all zeros 
-        stop_signal_fea = torch.zeros((lane_n_num, self.hidden_dim//4*3+self.hidden_dim//2), device="cuda:"+str(input_dic["gpu"]))    #todo:为什么hidden_dim//4要*3，而不是2
+        stop_signal_fea = torch.zeros((lane_n_num, self.hidden_dim//4*3+self.hidden_dim//2), device="cuda:"+str(input_dic["gpu"]))  
         if "lane_n_stop_sign_fea_lis" in input_dic:
             stop_sign_fea = input_dic["lane_n_stop_sign_fea_lis"]
             stop_sign_fea = shared_coor_encoder(stop_sign_fea)
@@ -287,7 +272,7 @@ class Lane2embedding(nn.Module):
         output_n_fea = self.lane_n_out_fc(torch.cat([coor_fea, type_fea, stop_signal_fea], dim=-1))
         
         ## Lane Edge Feature Encoding
-        lane_e_num_lis_by_etype = np.cumsum([0] + [len(input_dic["graph_lis"].edata["l_e_fea"][_]) for _ in [("lane", "l2a", "agent"), ("lane", "left", "lane"), ("lane", "right", "lane"), ("lane", "prev", "lane"), ("lane", "follow", "lane")]])   #12.7：看到这里啦！
+        lane_e_num_lis_by_etype = np.cumsum([0] + [len(input_dic["graph_lis"].edata["l_e_fea"][_]) for _ in [("lane", "l2a", "agent"), ("lane", "left", "lane"), ("lane", "right", "lane"), ("lane", "prev", "lane"), ("lane", "follow", "lane")]])  
         lane_e_rel_pos = torch.cat([input_dic["graph_lis"].edata["l_e_fea"][_] for _ in [("lane", "l2a", "agent"), ("lane", "left", "lane"), ("lane", "right", "lane"), ("lane", "prev", "lane"), ("lane", "follow", "lane")]], dim=0)
         lane_e_rel_pos_fea = shared_rel_encoder(lane_e_rel_pos)
         lane_e_num = lane_e_rel_pos_fea.shape[0]
@@ -365,8 +350,6 @@ class PositionwiseFeedForward(nn.Module):
         output = self.dropout(output) + residual
         return output
 
-
-
 class LaneHetGNN(nn.Module):
     def __init__(self, args):
         super().__init__()
@@ -394,7 +377,6 @@ class LaneHetGNN(nn.Module):
         ])
 
     def forward(self, input_dic):
-        #lane_n_fea = input_dic["graph_lis"].ndata["l_n_hidden"]["lane"]
         with input_dic["graph_lis"].local_scope():
             self.gpu = input_dic["gpu"]
             self.a_e_type_dict = input_dic["a_e_type_dict"]
@@ -436,9 +418,7 @@ class LaneHetGNN(nn.Module):
         '''
         定义节点聚合函数
         '''
-        return {"l_n_hidden_out":nodes.mailbox["l_e_hidden_"+etype].max(dim=1)[0]}     #nodes.mailbox存储了从相邻节点收集来的信息，第一维是每种类型的节点数量，12.8：看到这里啦
-        #todo:为什么message_func里产生的"l_e_hidden_"+etype数据维度和reduce_func调用"l_e_hidden_"+etype时的数据维度不一致？
-
+        return {"l_n_hidden_out":nodes.mailbox["l_e_hidden_"+etype].max(dim=1)[0]}     #nodes.mailbox存储了从相邻节点收集来的信息，第一维是每种类型的节点数量
 
 
 class AgentHetGNN(nn.Module):
@@ -455,7 +435,6 @@ class AgentHetGNN(nn.Module):
         d_k = self.head_dim
         d_v = self.head_dim
         self.attention = ScaledDotProductAttention(temperature=np.power(d_k, 0.5), args=args)
-
 
         if self.use_planning:
             if self.use_road_obs:
@@ -641,7 +620,7 @@ class AgentHetGNN(nn.Module):
         self.out_ffn = nn.ModuleList([PositionwiseFeedForward(args.hidden_dim, args.hidden_dim*4, args.dropout, nn.LayerNorm)
         for _ in range(3)
         ])
-        self.etype_dic = {}                                           #11.23：看到这里啦，明天继续哦！
+        self.etype_dic = {}                                         
         self.etype2hidden_name = {}
         self.etype2src_name = {}
         self.edge_MLP = {}
@@ -707,7 +686,7 @@ class AgentHetGNN(nn.Module):
                 if self.use_road_obs:
                     q = torch.zeros((input_dic["graph_lis"].ndata["a_n_hidden"]["agent"].shape[0], self.n_head * self.head_dim * 5), device=self.device)
                     for agent_type_index in range(3):
-                        if len(self.a_n_type_lis[agent_type_index]) != 0:  # 12.10：看到这里啦！
+                        if len(self.a_n_type_lis[agent_type_index]) != 0: 
                             q[self.a_n_type_lis[agent_type_index]] = self.wqs[agent_type_index](
                                 input_q[self.a_n_type_lis[agent_type_index]][..., 0])
                     other_q, lane_q, polygon_q, planning_q, view_q = q.view(input_q.shape[0], self.n_head, self.head_dim * 5).split(dim=-1, split_size=self.head_dim)
