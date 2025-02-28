@@ -84,7 +84,7 @@ parser.add_argument('--road_prediction', action="store_false", help='if predicti
 #### Log
 parser.add_argument('--val_every_train_step', type=int, default=-1, help='every number of training step to conduct one evaluation')   #default=-1
 parser.add_argument('--name', type=str, default="mtp_v2x", help='the name of this setting')     
-parser.add_argument('--data_path', type=str, default="/home/lixc/HDGT_main/dataset/V2X-Seq-TFD-Example/cooperative-vehicle-infrastructure/process_for_prediction_v2x_rock10/", help='the path of data')
+parser.add_argument('--data_path', type=str, default="/home/zhangxy/Co-MTP/dataset/V2X-Seq-TFD/'cooperative-vehicle-infrastructure/process_v2x_for_prediction/", help='the path of data')
 args = parser.parse_args()
 os.environ["DGLBACKEND"] = "pytorch"
 # 指定使用的 GPU
@@ -191,12 +191,8 @@ class AverageMeter(object):
 def main():
     args = parser.parse_args()
     ###Distributed
-    #gpu_count = torch.cuda.device_count()
-    gpu_count = 1
+    gpu_count = 1   #根据需求修改GPU数量
     global_seed = int(args.port) ## Import!!!! for coherent data splitting across process
-    # if args.tensorboard:
-    #     logger = SummaryWriter("logs/" + args.name + 'train-{}'.format(args.n_epoch))
-    #     logger_val = SummaryWriter("logs/" + args.name + 'validation-{}'.format(args.n_epoch))
     dataset_path = args.data_path
     # 按顺序打开num记录文件，并生成一个num_lis
     train_folder = "train"
@@ -218,7 +214,7 @@ def main():
         train_num_of_agent_arr = np.stack(num_of_agent_lis, axis=0)
         train_agent_num.append(train_num_of_agent_arr)
     val_folder = "val"
-    val_folder_path = os.path.join("/home/lixc/HDGT_main/dataset/V2X-Seq-TFD-Example/cooperative-vehicle-infrastructure/process_val_delay_2/", val_folder, "data")     #dataset_path   "/home/zhangxy/HDGT-main/dataset/V2X-Seq-TFD-Example/cooperative-vehicle-infrastructure/process_val_delay_10/"
+    val_folder_path = os.path.join(dataset_path, val_folder, "data")   
     val_data_file = os.listdir(val_folder_path)
     val_files_numbers = [(file, int(pattern.search(file).group(1))) for file in val_data_file if pattern.search(file)]
     sorted_files = sorted(val_files_numbers, key=lambda x: x[1])
@@ -248,8 +244,9 @@ def main():
     for file_name, number in sorted_files:
         val_data_file.append(os.path.join(val_folder_path, file_name))
 
-    # train_data_file = random.sample(list(enumerate(train_data_file)), 60)   #todo:完整数据集解除注释  80
-    # val_data_file = random.sample(list(enumerate(val_data_file)), 30)    #30
+    ##抽象 试训练
+    # train_data_file = random.sample(list(enumerate(train_data_file)), 60)   
+    # val_data_file = random.sample(list(enumerate(val_data_file)), 30)    
     # train_agent_num = [train_agent_num[_] for _ in np.array(train_data_file)[:, 0].astype(int)]
     # val_agent_num = [val_agent_num[_] for _ in np.array(val_data_file)[:, 0].astype(int)]
     # train_data_file = list(np.array(train_data_file)[:, 1])
@@ -298,9 +295,6 @@ def main_worker(gpu, gpu_count, global_seed, args, train_data_file, val_data_fil
         print(args)
         shutil.copyfile(__file__, os.path.join(log_dir, "train.py"))          #把前者复制到后者的文件中
         shutil.copyfile("model.py", os.path.join(log_dir, "model.py"))
-        # if args.tensorboard:
-        #     logger = SummaryWriter(log_dir + 'train-{}'.format(args.n_epoch))
-        #     logger_val = SummaryWriter(log_dir + 'validation-{}'.format(args.n_epoch))
     model_module = importlib.import_module("model_v2x_road_adddec")      #把model.py文件导入给model_module
     model = model_module.HDGT_model(input_dim=11, args=args)
     model.apply(model_module.weights_init)   #让model里的模型应用model_module.weights_init里的函数
@@ -318,8 +312,6 @@ def main_worker(gpu, gpu_count, global_seed, args, train_data_file, val_data_fil
     if global_rank == 0:   #todo
         print("train sample num:", train_sample_num, "val sample num:", val_sample_num, flush=True)
         print('data loaded', flush=True)
-
-#    train_dataloader, val_dataloader, train_sample_num, val_sample_num = obtain_dataset(global_rank, gpu_count, global_seed, args)        #11.24：暂时看到这里了
 
     checkpoint = None
     if args.checkpoint != "none":
@@ -366,20 +358,13 @@ def main_worker(gpu, gpu_count, global_seed, args, train_data_file, val_data_fil
         amp_data_type = torch.float32 ## Not enabled
         scaler = None
 
-    for epoch in range(args.start_epoch, args.n_epoch+1):     #range(args.start_epoch, args.n_epoch+1)
-#        avg_time_tr = 0
-        run_model(dataloader=train_dataloader, num_sample=train_sample_num, model=model, optimizer=optimizer, scheduler=scheduler, epoch=epoch, gpu=gpu, global_rank=global_rank, gpu_count=gpu_count, is_train=False, args=args, val_dataloader=val_dataloader, val_sample_num=val_sample_num, snapshot_dir=snapshot_dir, scaler=scaler, amp_data_type=amp_data_type, logger=logger, logger_val=logger_val)    #logger=logger, logger_val=logger_val, avg_time_tr=avg_time_tr
+    for epoch in range(args.start_epoch, args.n_epoch+1):   
+        run_model(dataloader=train_dataloader, num_sample=train_sample_num, model=model, optimizer=optimizer, scheduler=scheduler, epoch=epoch, gpu=gpu, global_rank=global_rank, gpu_count=gpu_count, is_train=False, args=args, val_dataloader=val_dataloader, val_sample_num=val_sample_num, snapshot_dir=snapshot_dir, scaler=scaler, amp_data_type=amp_data_type, logger=logger, logger_val=logger_val)   
     
+def run_model(dataloader, num_sample, model, optimizer, scheduler, epoch, gpu, global_rank, gpu_count, is_train, args, val_dataloader=None, val_sample_num=None, snapshot_dir=None, scaler=None, amp_data_type=None, logger=None, logger_val=None):   
 
-def run_model(dataloader, num_sample, model, optimizer, scheduler, epoch, gpu, global_rank, gpu_count, is_train, args, val_dataloader=None, val_sample_num=None, snapshot_dir=None, scaler=None, amp_data_type=None, logger=None, logger_val=None):   #logger=None, logger_val=None, avg_time_tr=None
-    # assert logger is not None, "logger is not initialized!"
-    # assert logger_val is not None, "logger_val is not initialized!"
-    # global logger
-    # global logger_val
-
-    length_lis = [5, 10, 15, 20, 25]    #[30, 50, 80]
-    agent_type_lis = ["PEDESTRIAN", "BICYCLE", "VEHICLE"]     #["VEHICLE", "PEDESTRIAN", "CYCLIST"]
-#    metric_type_lis = ["ade", "fde", "mr", "ade6", "fde6", "mr6",]
+    length_lis = [5, 10, 15, 20, 25]  
+    agent_type_lis = ["PEDESTRIAN", "BICYCLE", "VEHICLE"]    
     metric_type_lis = ["ade6", "fde6", "mr6"]
     
     acc_metric_type_lis = ["acc6s"]
