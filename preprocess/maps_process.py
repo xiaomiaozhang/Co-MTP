@@ -23,11 +23,6 @@ def maps_process(map_data):
         now_polygon_fea = [0, np.array([[_[0], _[1]] for _ in crosswalk_fea['polygon']])]
         all_polygon_fea.append(now_polygon_fea)
 
-    # for stop_line_id, stop_line_fea in stop_line.items():
-    #     now_polygon_fea = [1, np.array([[_[0], _[1]] for _ in stop_line_fea['centerline']])]
-    #     now_polygon_fea[1] = np.concatenate([now_polygon_fea[1], now_polygon_fea[1][0]], axis=0)
-    #     all_polygon_fea.append(now_polygon_fea)
-
     for lane_id, lane_fea in lane.items():
         all_lane_fea[int(lane_id)] = {}
         all_lane_fea[int(lane_id)]["type"] = lane_fea['type']  #3types
@@ -41,7 +36,7 @@ def maps_process(map_data):
         all_polygon_fea.append([1, np.stack(lane_fea['right_boundary'], axis=0)])
 
     print("Conversion Completed!!!")
-#    return all_lane_fea, all_polygon_fea
+
     length_per_polyline = 40.0  # 20 meters
     point_per_polyline = 21
     space = int(length_per_polyline // (point_per_polyline - 1))
@@ -104,11 +99,11 @@ def maps_process(map_data):
                 can_turn_new_adj_lane_lis = old_lane_id_to_new_lane_index_lis[old_adj_info[0]][int(old_adj_info[3] // length_per_polyline):int(old_adj_info[4] // length_per_polyline + 1)]
                 l1 = len(can_turn_new_lane_lis)
                 l2 = len(can_turn_new_adj_lane_lis)
-                boundary_type = 1  #default: old_adj_info[5]  todo:把所有的道路边类型都设为1
+                boundary_type = 1  #default: old_adj_info[5]  
                 if l1 == l2:
                     for tmp_index_i in range(l1):
                         tmp_index = can_turn_new_lane_lis[tmp_index_i]
-                        new_lane_fea[tmp_index][edge_type].append([can_turn_new_adj_lane_lis[tmp_index_i], boundary_type + 2])  # 为什么+2？是因为“following”和"prev"占了0和1这两个标志吗？
+                        new_lane_fea[tmp_index][edge_type].append([can_turn_new_adj_lane_lis[tmp_index_i], boundary_type + 2])  
                 elif l1 < l2:
                     ratio = int(math.ceil(float(l2) / float(l1)))
                     for tmp_index_i in range(l1):
@@ -118,7 +113,7 @@ def maps_process(map_data):
                         if l2 % l1 == 0:
                             gap += 1
                         while ratio_index < ratio and ratio_index + tmp_index_i * gap < l2:
-                            new_lane_fea[tmp_index][edge_type].append([can_turn_new_adj_lane_lis[int(ratio_index + tmp_index_i * gap)], boundary_type + 2])  # 11.19：没看明白，明天继续（小喵，Fighting!） 11.20：看懂啦，小喵，你好棒！
+                            new_lane_fea[tmp_index][edge_type].append([can_turn_new_adj_lane_lis[int(ratio_index + tmp_index_i * gap)], boundary_type + 2])  
                             ratio_index += 1
                 elif l1 > l2:
                     ratio = int(math.ceil(float(l1) / float(l2)))
@@ -130,7 +125,7 @@ def maps_process(map_data):
                             gap += 1
                         while ratio_index < ratio and ratio_index + adj_index_i * gap < l1:
                             tmp_index = can_turn_new_lane_lis[ratio_index + adj_index_i * gap]
-                            new_lane_fea[tmp_index][edge_type].append([tmp_adj_index, boundary_type + 2])  # 这样操作的话，new_lane_fea里有的lane就有可能没有与之相对应的"left"or"right"lane编号（头上多了三个问号？？？）
+                            new_lane_fea[tmp_index][edge_type].append([tmp_adj_index, boundary_type + 2]) 
                             ratio_index += 1
     for _ in range(len(new_lane_fea)):
         new_lane_fea[_]["yaw"] = np.arctan2(new_lane_fea[_]["xy"][-1, 1] - new_lane_fea[_]["xy"][0, 1], new_lane_fea[_]["xy"][-1, 0] - new_lane_fea[_]["xy"][0, 0])
