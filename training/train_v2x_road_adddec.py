@@ -398,8 +398,8 @@ def run_model(dataloader, num_sample, model, optimizer, scheduler, epoch, gpu, g
         val_every_train_step = 1
         print_freq = 1
     else:
-        val_every_train_step = args.val_every_train_step   #default:args.val_every_train_step
-        print_freq = 20         #default:print_freq = 100
+        val_every_train_step = args.val_every_train_step  
+        print_freq = 100      
     
     num_prediction = args.num_prediction
     refine_num = args.refine_num
@@ -420,9 +420,8 @@ def run_model(dataloader, num_sample, model, optimizer, scheduler, epoch, gpu, g
     for param_group in optimizer.param_groups:
         param_group["lr"] = args.lr * decay_coefficient
 
-#    use_amp = (scaler == None)
     with torch.set_grad_enabled(is_train):
-        for batch_index, data in enumerate(val_dataloader):
+        for batch_index, data in enumerate(dataloader):
             st_time = time.time()
             data["is_train"] = is_train
             data["gpu"] = gpu
@@ -431,9 +430,8 @@ def run_model(dataloader, num_sample, model, optimizer, scheduler, epoch, gpu, g
             optimizer.zero_grad()
             num_of_sample = len(data["pred_num_lis"])
 
-            with torch.cuda.amp.autocast(enabled=False):    #enabled=use_amp
+            with torch.cuda.amp.autocast(enabled=False): 
                 model = model.to(amp_data_type)
-#                data = convert_to_float16(data, device)
                 agent_reg_res, agent_cls_res, pred_indice_bool_type_lis = model(data)
                 reg_labels = [data["label_lis"][pred_indice_bool_type_lis[_]] for _ in range(3)]
 
@@ -453,8 +451,8 @@ def run_model(dataloader, num_sample, model, optimizer, scheduler, epoch, gpu, g
                     num_of_mask_per_agent = label_masks[agent_type_index].sum(dim=-1)   #每个target真实轨迹在未来80帧的有效总帧数
                     mask_sum = num_of_mask_per_agent.sum()         #每一种type的所有预测目标真实轨迹在未来80帧的有效总帧数
                     if mask_sum != 0:
-                        dist_between_pred_label = reg_criteria(agent_reg_res[agent_type_index], reg_labels[agent_type_index].unsqueeze(1).unsqueeze(1).repeat(1, refine_num+1, num_prediction, 1, 1)).mean(-1) ## N_Agent, N_refine, num_prediction, 80
-                        dist_between_pred_label = (dist_between_pred_label * label_masks[agent_type_index].unsqueeze(1).unsqueeze(1)).sum(-1) / (num_of_mask_per_agent.unsqueeze(-1).unsqueeze(-1)+1)     #除数上+1是为了避免出现除数为0的情况  ## N_Agent, N_refine, num_prediction   #12.14：看到这里啦！
+                        dist_between_pred_label = reg_criteria(agent_reg_res[agent_type_index], reg_labels[agent_type_index].unsqueeze(1).unsqueeze(1).repeat(1, refine_num+1, num_prediction, 1, 1)).mean(-1) ## N_Agent, N_refine, num_prediction, 50
+                        dist_between_pred_label = (dist_between_pred_label * label_masks[agent_type_index].unsqueeze(1).unsqueeze(1)).sum(-1) / (num_of_mask_per_agent.unsqueeze(-1).unsqueeze(-1)+1)     #除数上+1是为了避免出现除数为0的情况  ## N_Agent, N_refine, num_prediction 
                         agent_closest_index = dist_between_pred_label[:, -1, :].argmin(dim=-1)   #提取最后一层refine的数据，并返回误差最小模态的索引
 
                         reg_loss += (dist_between_pred_label[torch.arange(agent_closest_index.shape[0]), :, agent_closest_index]).sum() / (refine_num+1)   #在误差最小的模态下，平均在每层refine中产生的预测目标误差和
@@ -515,48 +513,25 @@ def run_model(dataloader, num_sample, model, optimizer, scheduler, epoch, gpu, g
                             now_agent_closest_index = agent_closest_index_lis[agent_type_index].detach().cpu().numpy()
                             now_cls_sorted_index = now_agent_cls_res.argsort(dim=-1, descending=True).detach().cpu().numpy()   #返回降序后的索引
                             now_agent_cls_res = now_agent_cls_res.detach().cpu().numpy()
-
-                            # cls_acc = 0.0
+                         
                             cls_acc6 = 0.0
-                            # best_preds = [0] * len(now_labels)
                             best_6preds = [0] * len(now_labels)
                             for item_index in range(len(now_labels)):
-                                # if now_agent_closest_index[item_index] == now_cls_sorted_index[item_index][0]:
-                                #     cls_acc += 1.0
                                 if now_agent_closest_index[item_index] in now_cls_sorted_index[item_index][:6].tolist():
                                     cls_acc6 += 1.0
-                                # best_preds[item_index] = now_agent_reg_res[item_index, ...][now_cls_sorted_index[item_index][0], :, :]    #概率最大模态对应的预测轨迹(80,2)
                                 best_6preds[item_index] = now_agent_reg_res[item_index][now_cls_sorted_index[item_index][:6], :, :]       #6种模态对应的预测轨迹（按照概率从大到小进行排序）
-                            # cls_acc /= now_agent_reg_res.shape[0]
                             cls_acc6 /= now_agent_reg_res.shape[0]
-                            # recorder[agent_type_lis[agent_type_index]+"_"+"accs"].update(cls_acc, now_agent_reg_res.shape[0])
                             recorder[agent_type_lis[agent_type_index]+"_"+"acc6s"].update(cls_acc6, now_agent_reg_res.shape[0])
-                            # best_preds = np.stack(best_preds, axis=0)
                             best_6preds = np.stack(best_6preds, axis=0)
 
                             for length_indices in range(5):
-                                # res_lis, res_cnt_lis = cal_ade_fde_mr(best_preds[:, :length_lis[length_indices], :][:, 4::5, :], now_labels[:, :length_lis[length_indices], :][:, 4::5, :], now_label_masks[:, :length_lis[length_indices]][:, 4::5])
-                                # if res_lis:
-                                #     for metric_indices, metric_type in enumerate(["ade", "fde", "mr"]):
-                                #         if res_cnt_lis[metric_indices] > 0:
-                                #             recorder[agent_type_lis[agent_type_index]+"_"+str(length_lis[length_indices])+"_"+metric_type].update(res_lis[metric_indices], res_cnt_lis[metric_indices])
-
                                 res_lis, res_cnt_lis = cal_min6_ade_fde_mr(best_6preds[:, :, :length_lis[length_indices], :][:, :, 4::5, :], now_labels[:, :length_lis[length_indices], :][:, 4::5, :], now_label_masks[:, :length_lis[length_indices]][:, 4::5])
                                 if res_lis:
                                     for metric_indices, metric_type in enumerate(["ade6", "fde6", "mr6"]):
                                         if res_cnt_lis[metric_indices] > 0:
                                             recorder[agent_type_lis[agent_type_index]+"_"+str(length_lis[length_indices])+"_"+metric_type].update(res_lis[metric_indices], res_cnt_lis[metric_indices])
-#                print_time = time.time() - st_time
-#                avg_time_tr += print_time
                 if (is_train and ((batch_index+1) % print_freq) == 0):
                     print_dic = {metric_type: 0.0 for metric_type in metric_type_lis}
-                    # sub_print_dic = {}
-                    # for agent_type in agent_type_lis:
-                    #     for metric_type in metric_type_lis:
-                    #         sub_print_dic[agent_type + "_" + metric_type] = 0
-                    #         for length in length_lis:
-                    #             sub_print_dic[agent_type + "_" + metric_type] += recorder[agent_type+"_"+str(length)+"_"+metric_type].avg   #计算每种类型agent的每种指标在五种预测时间长度下的和（3），并存储在sub_print_dic
-
                     detail_text = ""
                     for agent_type in agent_type_lis:
                         for length in length_lis:
@@ -567,7 +542,6 @@ def run_model(dataloader, num_sample, model, optimizer, scheduler, epoch, gpu, g
                         for acc_metric_type in acc_metric_type_lis:
                             detail_text += ", "+agent_type+"_" + acc_metric_type + " "+str(recorder[agent_type+"_"+acc_metric_type].avg)
                     print_dic = {k:v/15.0 for k, v in print_dic.items()}     #求指标均值
-                    # sub_print_dic = {k:v/5.0 for k, v in sub_print_dic.items()}
 
                     print_text = ' Epoch: [{0}][{1}/{2}-Batch {3}], '.format(epoch, (batch_index+1)*batch_size*gpu_count, num_sample, batch_index)
                     print_text += "Loss {:.8f}, ".format(recorder["loss"].avg)
@@ -575,13 +549,9 @@ def run_model(dataloader, num_sample, model, optimizer, scheduler, epoch, gpu, g
                     print_text += "Reg Loss {:.8f}, ".format(recorder["reg_loss"].avg)
                     for k, v in print_dic.items():
                         print_text += k + " {:.4f}, ".format(v)
-                    # for k, v in sub_print_dic.items():
-                    #     print_text += k + " {:.4f}, ".format(v)
                     print_text += detail_text
                     print_text += "Time(s): {:.4f}".format(time.time() - start_time)
                     print_text += ", LR: {:.4e}".format(scheduler.get_last_lr()[0])
-                    # eta = avg_time_tr/print_freq*(num_sample/batch_size-batch_index)
-                    # print_text += "ETA(s): {:.4f}".format(eta)
                     print(print_text, flush=True)
                     if args.tensorboard:
                         logger.add_scalar("Loss", recorder["loss"].avg, ((batch_index+1)*batch_size*gpu_count/num_sample + epoch - 1) * 100)
@@ -597,8 +567,7 @@ def run_model(dataloader, num_sample, model, optimizer, scheduler, epoch, gpu, g
                     recorder["loss"] = AverageMeter()
                     recorder["reg_loss"] = AverageMeter()
                     recorder["cls_loss"] = AverageMeter()
-
-#                    if is_train and ((batch_index+1) % val_every_train_step == 0 or (val_every_train_step <= 0 and batch_index == (len(dataloader)-1))) and not is_dev:
+ 
                     if is_train and val_every_train_step <= 0 and (batch_index+1+print_freq)*batch_size*gpu_count >= num_sample:  #todo
                         if gpu_count > 1:
                             val_model = model.module
@@ -606,9 +575,8 @@ def run_model(dataloader, num_sample, model, optimizer, scheduler, epoch, gpu, g
                             val_model = model
                         val_model.eval()
                         run_model(val_dataloader, val_sample_num, val_model, optimizer, scheduler, epoch, gpu, global_rank, gpu_count, is_train=False, args=args, scaler=scaler, amp_data_type=amp_data_type, logger=logger, logger_val=logger_val)
-                        model.train()      #12.16：看到这里啦
-#                        avg_time_tr = 0
-                        file_path = os.path.join("/mnt/data/zxy/trained_model/exp_33/", "Epoch_"+str(epoch)+"_batch"+str(batch_index)+".pt")    #os.path.join(snapshot_dir, "Epoch_"+str(epoch)+"_batch"+str(batch_index)+".pt")
+                        model.train()     
+                        file_path = os.path.join(snapshot_dir, "Epoch_"+str(epoch)+"_batch"+str(batch_index)+".pt")
                         checkpoint = {}
 
                         if gpu_count > 1:
