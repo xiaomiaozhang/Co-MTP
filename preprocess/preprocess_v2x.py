@@ -586,27 +586,6 @@ if __name__ == '__main__':
     save_count = 0
     data_num = len(tasks)
 
-    
-    # with multiprocessing.Pool(processes=8) as pool:
-    #     while 1 * epo < data_num:
-    #         start_index = 1 * epo
-    #         end_index = min((epo + 1) * 1, data_num)
-    #         result = pool.starmap(process, tasks[start_index:end_index])  # 使用 starmap 来传递多个参数
-    #         result = list(filter(lambda x: x is not None, result))
-    #         with open(os.path.join(data_dest, result[0][0]["fname"].split('.')[0] + ".pkl"), "wb") as g:  #with open(os.path.join(data_dest, str(epo) + ".pkl"), "wb") as g:
-    #             pickle.dump(list(map(itemgetter(0), result)), g)    #pickle.dump(list(map(itemgetter(0), result)), g)
-    #         num_of_element_lis.append([e[1] for e in result])
-    #         print("保存成功！")
-    #         with open(os.path.join(data_dest, str(epo) + "_number_of_dataset" + ".pkl"), "wb") as g:
-    #             pickle.dump(np.array(np.stack(list(map(itemgetter(1), result)))), g)
-    #         save_count = save_count + len(result)
-    #         epo = epo + 1
-    #         del result
-    #         gc.collect()
-    # pool.close()
-    # pool.join()
-
-
     with multiprocessing.Pool(processes=8) as pool:
         while 500 * epo < data_num:
             start_index = 500 * epo
@@ -614,9 +593,9 @@ if __name__ == '__main__':
             result = pool.starmap(process, tasks[start_index:end_index])  # 使用 starmap 来传递多个参数
             result = list(filter(lambda x: x is not None, result))
             for num in range(len(result)):
-                with open(os.path.join(data_dest, result[num][0]["fname"].split('.')[0] + ".pkl"), "wb") as g:
+                with open(os.path.join(data_dest, str(save_count + num) + ".pkl"), "wb") as g:
                     pickle.dump(result[num][0], g)
-            num_of_element_lis.append(list(map(itemgetter(1), result)))
+            num_of_element_lis.append([e[1] for e in result])
             print("保存成功！")
             save_count = save_count + len(result)
             epo = epo + 1
@@ -624,46 +603,13 @@ if __name__ == '__main__':
             gc.collect()
     pool.close()
     pool.join()
+ 
     print("Preprocess Done")
-
-    # num_of_element_lis = list(itertools.chain(*num_of_element_lis))
-    # with open(os.path.join(data_dest, "number_of_dataset.pkl"), "wb") as g:
-    #     pickle.dump(np.array(np.stack(num_of_element_lis)), g)
+ 
+    num_of_element_lis = list(itertools.chain(*num_of_element_lis))
+    with open(os.path.join(data_dest, "number_of_dataset.pkl"), "wb") as g:
+        pickle.dump(np.array(np.stack(num_of_element_lis)), g)
 
     print("Dataset Processing Done!!!")
-
-    # def partial_process(data, new_lane_fea, all_polygon_fea):
-    #     return process(data, new_lane_fea, all_polygon_fea)
-#     with multiprocessing.Pool(processes=16) as pool:
-# #     # run for train and val dataset
-# #     pool = multiprocessing.Pool(processes=1)
-# #     pool.map_async(partial(partial_process, new_lane_fea=new_lane_fea, all_polygon_fea=all_polygon_fea), data_ls[:]).get()
-#         tasks = [(data, i) for i, data in enumerate(data_ls)]
-#         pool.starmap(process, tasks)  # 使用 starmap 来传递多个参数
-
-
-    # pool.close()
-    # pool.join()
-    # print("Preprocess Done")
-    # keys_array = np.array(list(result_dict.keys()))
-    # # 提取排序后键的索引
-    # sorted_indexes = np.argsort(keys_array)
-    #
-    # num = 0
-    # for index in sorted_indexes:
-    #     with open(os.path.join(data_dest, str(num) + ".pkl"), "wb") as g:
-    #         pickle.dump(result_dict[keys_array[index]]["data"], g)
-    #     num = num + 1
-#    json_num = json.dumps(np.array(num_of_element_lis))
-
-    # for num in tqdm(range(len(result_lis)), total=len(result_lis)):
-    #     with open(os.path.join(data_dest, str(num) + ".pkl"), "wb") as g:
-    #         pickle.dump(result_lis[num][0], g)
-#    num_of_element_lis = [result_lis[num][1] for num in range(len(result_lis))]
-#     num_of_element_lis = list(itertools.chain(*num_of_element_lis))
-#     with open(os.path.join(data_dest, "number_of_dataset.pkl"), "wb") as g:
-#         #pickle.dump(np.array(np.stack(num_of_element_lis)), g)
-#         pickle.dump(np.array(np.stack(num_of_element_lis)), g)
- #       g.write(json_num.encode())
-
-    # print("Dataset Processing Done!!!")
+    
+    
