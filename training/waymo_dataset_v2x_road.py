@@ -14,13 +14,7 @@ import multiprocessing
 
 
 class V2XDataset(Dataset):
-    def __init__(self, agent_num_lis, data_file, num_current_frame, t_h, d_s, road_prediction):
-        self.data_file = data_file
-        self.num_current_frame = num_current_frame
-        self.t_h = t_h
-        self.d_s = d_s
-        self.road_prediction = road_prediction
-        self.k = 0
+    def __init__(self, agent_num_lis):
         self.agent_num_lis = agent_num_lis
     def __getitem__(self, idx):
         
@@ -138,7 +132,7 @@ def obtain_dataset(gpu, gpu_count, seed_num, args, data_file, agent_num, is_trai
     sampler = BalancedBatchSampler(args, agent_num, data_file, seed_num=seed_num, gpu=gpu, gpu_cnt=gpu_count, is_train=is_train)
 
 
-    dataset = V2XDataset(agent_num, data_file=data_file, num_current_frame=args.num_current_frame, t_h=args.t_h, d_s=args.d_s, road_prediction=args.road_prediction)
+    dataset = V2XDataset(agent_num)
 
 
     dataloader = DataLoader(dataset, pin_memory=False, collate_fn=partial(HDGT_collate_fn, args=args, is_train=is_train), batch_sampler=sampler, num_workers=args.num_worker)
@@ -169,11 +163,11 @@ def return_uv(neighborhood_size):
         return (u, v)
 
 def generate_heterogeneous_graph(agent_fea, road_agent_feature,  map_fea, agent_map_size_lis, other_label_index, args):
-    max_in_edge_per_type = 32 ## For saving GPU memory  #todo  #default:32
+    max_in_edge_per_type = 32 ## For saving GPU memory  
     uv_dic = {}
     plan_agent_index_lis = []
     if not args.road_prediction:
-        plan_agent_index_lis = [agent_fea.shape[0] - 1]  # 如果没有v2x的话，有规划信息的只有自车
+        plan_agent_index_lis = [agent_fea.shape[0] - 1]  #路端预测时，没有自车规划信息
     if args.v2x_prediction:
         plan_agent_index_lis = other_label_index + plan_agent_index_lis
     uv_dic[("agent", "self", "agent")] = [list(range(agent_fea.shape[0])), list(range(agent_fea.shape[0]))]  ## Self-loop
@@ -187,7 +181,6 @@ def generate_heterogeneous_graph(agent_fea, road_agent_feature,  map_fea, agent_
                 for road_agent_index in range(len(road_agent_feature)):
                     uv_dic[("road", "view", "agent")][0] += [road_agent_index]
                     uv_dic[("road", "view", "agent")][1] += [agent_index_i]
-
 
     if args.use_planning:
         uv_dic[("agent", "planning", "agent")] = [[], []]
@@ -208,7 +201,7 @@ def generate_heterogeneous_graph(agent_fea, road_agent_feature,  map_fea, agent_
     uv_dic[("agent", "other", "agent")] = [[], []]
     for agent_index_i in range(num_of_agent):#遍历一个sample中的所有车辆
         final_dist_between_agent = euclid_np(agent_fea[agent_index_i, -1, :][np.newaxis, 1:3], agent_fea[:, -1, 1:3])
-        nearby_agent_index = np.where(final_dist_between_agent < np.maximum(agent_map_size_lis[agent_index_i][np.newaxis], agent_map_size_lis))[0]         #阈值取两辆车map_size较大的那一个，因为只要车辆在对方车辆的影响范围内，这两辆车就有对应的edge。妙！！
+        nearby_agent_index = np.where(final_dist_between_agent < np.maximum(agent_map_size_lis[agent_index_i][np.newaxis], agent_map_size_lis))[0]         #阈值取两辆车map_size较大的那一个，因为只要车辆在对方车辆的影响范围内，这两辆车就有对应的edge
         nearby_agent_index = np.delete(nearby_agent_index, obj=np.where(nearby_agent_index == agent_index_i))
         if len(nearby_agent_index) > max_in_edge_per_type:
             final_dist_between_agent_sorted_nearby_index = np.argsort(final_dist_between_agent[nearby_agent_index])
@@ -266,7 +259,7 @@ def generate_heterogeneous_graph(agent_fea, road_agent_feature,  map_fea, agent_
 
     lane2lane_boundary_dic = {}
     ## Map-Map Adj
-    for etype in ["left", "right", "prev", "follow"]:            #12.2：居然还有这么多没看，加把劲
+    for etype in ["left", "right", "prev", "follow"]:          
         uv_dic[("lane", etype, "lane")] = [[], []]
         lane2lane_boundary_dic[("lane", etype, "lane")] = []
     if len(map_fea[0]) > 0:
@@ -277,7 +270,7 @@ def generate_heterogeneous_graph(agent_fea, road_agent_feature,  map_fea, agent_
                 neighbors = [_ for _ in info_dic[etype] if _[0] in laneindex2graphindex]
                 lane2lane_boundary_dic[("lane", etype, "lane")] += [_[1] for _ in neighbors]
                 neighbors = [_[0] for _ in neighbors]
-                uv_dic[("lane", etype, "lane")][0] += [laneindex2graphindex[in_graph_lane]] * len(neighbors)          #为什么要用laneindex2graphindex？因为并不是所有lane都在一个场景的考虑范围内，为了方便循环遍历，将考虑范围内的lane从1开始按整数挨个计数，而laneindex2graphindex就是与这个场景相对应的lane编号查找字典
+                uv_dic[("lane", etype, "lane")][0] += [laneindex2graphindex[in_graph_lane]] * len(neighbors)        
                 uv_dic[("lane", etype, "lane")][1] += [laneindex2graphindex[_] for _ in neighbors]
     
     output_dic = {}
@@ -291,11 +284,6 @@ def generate_heterogeneous_graph(agent_fea, road_agent_feature,  map_fea, agent_
     return output_dic
 
 def rotate(data, cos_theta, sin_theta):
-    # print(f"data的维度: {np.shape(data)}, cos_theta的维度: {np.shape(cos_theta)}, sin_theta的维度: {np.shape(sin_theta)}")
-    # print((data[..., 0]*cos_theta - data[..., 1]*sin_theta).shape)
-    # if len(data[..., 0].shape) == 1:
-    #     cos_theta = np.squeeze(cos_theta)
-    #     sin_theta = np.squeeze(sin_theta)
     data[..., 0], data[..., 1] = data[..., 0]*cos_theta - data[..., 1]*sin_theta, data[..., 1]*cos_theta + data[..., 0]*sin_theta
     return data
 
@@ -323,26 +311,15 @@ def normal_polygon_feature(all_polygon_coor, all_polygon_type, ref_coor, cos_the
 def normal_lane_feature(now_polyline_coor, now_polyline_type, now_polyline_signal, polyline_index, ref_coor, cos_theta, sin_theta):
     '''
     对各个lane的相关特征信息进行相对坐标系的转换
-    输出：n条lane的相对坐标(n,21,3)，类型type，限速speed_limit，stop_point在它所在的lane相对坐标系中的坐标(s,3)，stop_point所在lane的index(0~n-1)，signal_point在它所在的lane相对坐标系中的坐标，signal_point所在lane的index(0~n-1)
+    输出：n条lane的相对坐标(n,21,3)，类型type，限速speed_limit，signal_point在它所在的lane相对坐标系中的坐标，signal_point所在lane的index(0~n-1)
     '''
     output_polyline_coor = now_polyline_coor[polyline_index] - ref_coor[:, np.newaxis, :]
     rotate(output_polyline_coor, cos_theta, sin_theta)
-    # output_stop_fea = {i:np.array(now_polyline_stop[_][0]) for i, _ in enumerate(polyline_index) if len(now_polyline_stop[_]) != 0}
     output_signal_fea = {i: np.array(now_polyline_signal[_]) for i, _ in enumerate(polyline_index) if len(now_polyline_signal[_]) != 0}
-    # output_stop_index, output_stop_fea = list(output_stop_fea.keys()), list(output_stop_fea.values())
-    ## 计算stop_point在它所在的lane相对坐标系中的坐标
-    # if len(output_stop_fea) != 0:
-    #     output_stop_fea = np.stack(output_stop_fea, axis=0)
-    #     output_stop_fea -= ref_coor[output_stop_index]
-    #     if type(cos_theta) == np.float64:
-    #         rotate(output_stop_fea, cos_theta, sin_theta)
-    #     else:
-    #         rotate(output_stop_fea, cos_theta[output_stop_index].flatten(), sin_theta[output_stop_index].flatten())
     ## 计算signal_point在它所在的lane相对坐标系中的坐标
     output_signal_index, output_signal_fea = list(output_signal_fea.keys()), list(output_signal_fea.values())
     if len(output_signal_fea) != 0:
         output_signal_fea = np.stack(output_signal_fea, axis=0)
-#        print("output_signal_fea:", output_signal_fea[..., :2].shape, "ref_coor:", ref_coor[output_signal_index].shape)
         if output_signal_fea[..., :2].shape[1] == 1: print(output_signal_fea)
         output_signal_fea[..., :2] -= ref_coor[output_signal_index]
         if type(cos_theta) == np.float64:
@@ -412,8 +389,7 @@ def HDGT_collate_fn(batch, args, is_train):
         road_type_lis = [item['road_type'] for item in batch]
     map_fea_lis = [item["map_fea"] for item in batch]
     object_id_lis = [item["object_id_lis"] for item in batch]
-    # file_name_lis = [item["file_name"] for item in batch]
-
+    
     if agent_drop > 0 and is_train:
         for i in range(len(agent_feature_lis)):
             keep_index = (np.random.random(agent_feature_lis[i].shape[0]) > agent_drop)
@@ -429,9 +405,6 @@ def HDGT_collate_fn(batch, args, is_train):
             label_lis[i] = label_lis[i][target_keep_index]
             auxiliary_label_lis[i] = auxiliary_label_lis[i][target_keep_index]
             label_mask_lis[i] = label_mask_lis[i][target_keep_index]
-            # if origin_pred_num != original_agent_num:
-            #     other_label_lis[i] = other_label_lis[i][keep_index[origin_pred_num:]]
-            #     other_label_mask_lis[i] = other_label_mask_lis[i][keep_index[origin_pred_num:]]
 
     neighbor_size = np.array([int(agent_feature_lis[i].shape[0]) for i in range(len(agent_feature_lis))])
 
@@ -448,8 +421,6 @@ def HDGT_collate_fn(batch, args, is_train):
     out_auxiliary_label_future_lis = []
     out_road_feature_mask_lis = []
     fut_mask_lis = []
-    # out_other_label_lis = []     #todo:路端时删除注释
-    # out_other_label_mask_lis = []
     out_av_fut_lis = []
     lane_n_cnt = 0
 
@@ -484,8 +455,6 @@ def HDGT_collate_fn(batch, args, is_train):
             Av_fut = AV_fut_lis[i]
             all_agent_fut = Av_fut
         if args.v2x_prediction:
-            #            other_fut_heading = np.arctan((other_fut[:, 1:, 1] - other_fut[:, :-1, 1]) / (other_fut[:, 1:, 0] - other_fut[:, :-1, 0]))
-            #            other_fut_heading = np.concatenate([other_fut_heading, other_fut_heading[:, -1][:, np.newaxis]], axis=1)[..., np.newaxis]
             if len(other_label) != 0:
                 other_fut = np.flip(np.concatenate([np.zeros((other_label.shape[0], other_label.shape[1], 1)), other_label, np.zeros((other_label.shape[0], other_label.shape[1], 1)), other_auxiliary_label], axis=-1), axis=1).copy()
                 if len(all_agent_fut) != 0:
@@ -505,44 +474,6 @@ def HDGT_collate_fn(batch, args, is_train):
         g.edata['a_e_fea'] = {("agent", "self", "agent"):torch.as_tensor(now_t0_e_feature.astype(np.float32))}
         g.edata['a_e_type'] = {("agent", "self", "agent"):torch.as_tensor((now_agent_type[type0_u].ravel()).astype(np.int32)).long()}     #.ravel()将选择的元素展平为一维数组
 
-        ##Type 6 edge a2a planning agent  #todo:没有规划模块的时候注释掉
-        if args.use_planning:
-            type6_u, type6_v = g.edges(etype="planning")
-#            type6_u = torch.tensor([pre_index_dic[_] for _ in type6_u.numpy()])  # type6_u中的index是相对all_agent_fut而言的
-            type6_u = type6_u - (len(now_agent_feature) - len(other_label) - 1)
-            if len(type6_v) > 0:
-                now_t6_v_feature = now_agent_feature[type6_v, :, :]
-                now_t6_e_feature = all_agent_fut[type6_u, :, :].copy()
-                if len(type6_v) == 1:
-                    now_t6_v_feature = now_t6_v_feature[np.newaxis, :, :]
-                if len(type6_u) == 1:
-                    now_t6_e_feature = now_t6_e_feature[np.newaxis, :, :]
-                #                print("now_t6_e_feature:", now_t6_e_feature.shape, " ,now_t6_v_feature:", now_t6_v_feature[:, -1, 1:4].shape)
-                now_t6_e_feature = return_rel_e_feature(now_t6_e_feature[:, -1, 1:4], now_t6_v_feature[:, -1, 1:4],
-                                                        now_t6_e_feature[:, -1, 6], now_t6_v_feature[:, -1, 6])  # TODO
-                g.edata['a_e_fea'] = {
-                    ("agent", "planning", "agent"): torch.as_tensor(now_t6_e_feature.astype(np.float32))}
-                g.edata['a_e_type'] = {("agent", "planning", "agent"): torch.as_tensor(
-                    (now_agent_type[type6_u].ravel()).astype(np.int32)).long()}
-            else:
-                g.edata['a_e_fea'] = {("agent", "planning", "agent"): torch.zeros((0, 5))}
-                g.edata['a_e_type'] = {("agent", "planning", "agent"): torch.zeros((0,)).long()}
-
-        if args.use_road_obs:
-            type7_u, type7_v = g.edges(etype="view")
-            if len(type7_v) > 0:
-                now_t7_v_feature = now_agent_feature[type7_v, :, :]
-                now_t7_e_feature = road_agent_feature[type7_u].copy()
-                if len(type7_v) == 1:
-                    now_t7_v_feature = now_t7_v_feature[np.newaxis, :, :]
-                    now_t7_e_feature = now_t7_e_feature[np.newaxis, :, :]
-                now_t7_e_feature = return_rel_e_feature(now_t7_e_feature[:, -1, 1:4], now_t7_v_feature[:, -1, 1:4],
-                                                        now_t7_e_feature[:, -1, 6], now_t7_v_feature[:, -1, 6])
-                g.edata['a_e_fea'] = {("road", "view", "agent"): torch.as_tensor(now_t7_e_feature.astype(np.float32))}
-                g.edata['a_e_type'] = {("road", "view", "agent"): torch.as_tensor((now_road_agent_type[type7_u].ravel()).astype(np.int32)).long()}
-            else:
-                g.edata['a_e_fea'] = {("road", "view", "agent"): torch.zeros((0, 5))}
-                g.edata['a_e_type'] = {("road", "view", "agent"): torch.zeros((0,)).long()}
 
         ### Type 1 edge a2a other agent
         type1_u, type1_v = g.edges(etype="other")
@@ -567,7 +498,7 @@ def HDGT_collate_fn(batch, args, is_train):
             now_polyline_type = np.array([_["type"] for _ in now_polyline_info])
 #            now_polyline_signal = [_["signal"] if len(_["signal"]) == 0 else np.concatenate([_["signal"][[0, 1]], _["signal"][2::args.d_s]], axis=0) for _ in now_polyline_info]  #todo:下采样取消注释
             now_polyline_signal =[_["signal"] for _ in now_polyline_info]
-            now_polyline_mean_coor = now_polyline_coor[:, 2, :]    #论文里不是说选择中点吗，为什么这里直接用了第三个点？  TODO
+            now_polyline_mean_coor = now_polyline_coor[:, 2, :]   
             type2_u = g.edges(etype="a2l")[0]#[0][cumu_edge_type_cnt_lis[2]:cumu_edge_type_cnt_lis[3]]
             type2_v = g.edges(etype="a2l")[1]#[1][cumu_edge_type_cnt_lis[2]:cumu_edge_type_cnt_lis[3]] - now_agent_feature.shape[0] - len(polygonlaneindex)
             if len(type2_v) > 0:
@@ -604,13 +535,10 @@ def HDGT_collate_fn(batch, args, is_train):
             now_t3_e_coor_feature = np.concatenate([now_t3_e_coor_feature, np.zeros((now_t3_e_coor_feature.shape[0], now_t3_e_coor_feature.shape[1], 1), dtype=np.float32)], axis=2)
             g.edata['g2a_e_fea'] = {("polygon", "g2a", "agent"): torch.as_tensor(now_t3_e_coor_feature.astype(np.float32))}
             g.edata['g2a_e_type'] = {("polygon", "g2a", "agent"): torch.as_tensor(now_t3_e_type_feature.ravel().astype(np.int32)).long()}
-        # else:
-        #     g.edata['g2a_e_fea'] = {("polygon", "g2a", "agent"): torch.tensor([], dtype=torch.float32)}
-        #     g.edata['g2a_e_type'] = {("polygon", "g2a", "agent"): torch.tensor([], dtype=torch.int64)}
 
         ### Type 4 Edge: Lane -> Agent
 
-        if len(polylinelaneindex) > 0:                   #12.3：看到这里了，加速加速
+        if len(polylinelaneindex) > 0:                  
             type4_u = g.edges(etype="l2a")[0]
             type4_v = g.edges(etype="l2a")[1]
             if len(type4_v) > 0:
@@ -619,7 +547,7 @@ def HDGT_collate_fn(batch, args, is_train):
                     now_t4_v_feature = now_t4_v_feature[np.newaxis, :, :]
                 now_t4_e_feature = return_rel_e_feature(now_polyline_mean_coor[type4_u], now_t4_v_feature[:, -1, 1:3], now_polyline_yaw[type4_u], now_t4_v_feature[:, -1, 6])
                 now_t4_e_feature = np.concatenate([now_t4_e_feature[:, 0:2], np.zeros((now_t4_e_feature.shape[0], 1), dtype=np.float32), now_t4_e_feature[:, 2:]], axis=1)
-                g.edata['l_e_fea'] = {("lane", "l2a", "agent"):torch.as_tensor(now_t4_e_feature.astype(np.float32))} #为啥没有'l_e_type'呢？？？
+                g.edata['l_e_fea'] = {("lane", "l2a", "agent"):torch.as_tensor(now_t4_e_feature.astype(np.float32))} 
         else:
             g.edata['l_e_fea'] = {("lane", "l2a", "agent"): torch.zeros((0, 5))}
         ### Type 5 Edge: Lane -> Lane
@@ -636,6 +564,42 @@ def HDGT_collate_fn(batch, args, is_train):
         else:
             for etype in ["left", "right", "prev", "follow"]:
                 g.edata['l_e_fea'] = {("lane", etype, "lane"): torch.zeros((0, 5))}
+
+        ##Type 6 edge a2a planning agent 
+        if args.use_planning:
+            type6_u, type6_v = g.edges(etype="planning")
+            type6_u = type6_u - (len(now_agent_feature) - len(other_label) - 1)
+            if len(type6_v) > 0:
+                now_t6_v_feature = now_agent_feature[type6_v, :, :]
+                now_t6_e_feature = all_agent_fut[type6_u, :, :].copy()
+                if len(type6_v) == 1:
+                    now_t6_v_feature = now_t6_v_feature[np.newaxis, :, :]
+                if len(type6_u) == 1:
+                    now_t6_e_feature = now_t6_e_feature[np.newaxis, :, :]
+                now_t6_e_feature = return_rel_e_feature(now_t6_e_feature[:, -1, 1:4], now_t6_v_feature[:, -1, 1:4], now_t6_e_feature[:, -1, 6], now_t6_v_feature[:, -1, 6])  
+                g.edata['a_e_fea'] = {("agent", "planning", "agent"): torch.as_tensor(now_t6_e_feature.astype(np.float32))}
+                g.edata['a_e_type'] = {("agent", "planning", "agent"): torch.as_tensor((now_agent_type[type6_u].ravel()).astype(np.int32)).long()}
+            else:
+                g.edata['a_e_fea'] = {("agent", "planning", "agent"): torch.zeros((0, 5))}
+                g.edata['a_e_type'] = {("agent", "planning", "agent"): torch.zeros((0,)).long()}
+
+        ##Type 7 edge r2a view agent 
+        if args.use_road_obs:
+            type7_u, type7_v = g.edges(etype="view")
+            if len(type7_v) > 0:
+                now_t7_v_feature = now_agent_feature[type7_v, :, :]
+                now_t7_e_feature = road_agent_feature[type7_u].copy()
+                if len(type7_v) == 1:
+                    now_t7_v_feature = now_t7_v_feature[np.newaxis, :, :]
+                    now_t7_e_feature = now_t7_e_feature[np.newaxis, :, :]
+                now_t7_e_feature = return_rel_e_feature(now_t7_e_feature[:, -1, 1:4], now_t7_v_feature[:, -1, 1:4],
+                                                        now_t7_e_feature[:, -1, 6], now_t7_v_feature[:, -1, 6])
+                g.edata['a_e_fea'] = {("road", "view", "agent"): torch.as_tensor(now_t7_e_feature.astype(np.float32))}
+                g.edata['a_e_type'] = {("road", "view", "agent"): torch.as_tensor((now_road_agent_type[type7_u].ravel()).astype(np.int32)).long()}
+            else:
+                g.edata['a_e_fea'] = {("road", "view", "agent"): torch.zeros((0, 5))}
+                g.edata['a_e_type'] = {("road", "view", "agent"): torch.zeros((0,)).long()}
+
         tar_id = tar_id_lis[i]
         object_id = object_id_lis[i]
         pred_index = np.where(object_id == tar_id)[0]
@@ -650,7 +614,6 @@ def HDGT_collate_fn(batch, args, is_train):
             else:
                 fut_agent_index = other_label_index
             fut_agent_ref_coor = now_agent_feature[fut_agent_index, -1, 1:3].copy()
-            #            av_fut = AV_fut_lis[i].copy()
             index_in_v2x = [_ - (len(now_agent_feature) - len(other_label) - 1) for _ in fut_agent_index]
             fut_agent_xy = all_agent_fut[index_in_v2x, :, 1:3] - fut_agent_ref_coor[:, np.newaxis, :]
             fut_agent_ref_psi = now_agent_feature[fut_agent_index, -1, 6].copy()
@@ -682,7 +645,7 @@ def HDGT_collate_fn(batch, args, is_train):
         cos_theta = np.cos(-ref_psi)
         rotate(now_label, cos_theta, sin_theta)
         #print("Attention!!!")
-        rotate(now_auxiliary_label, cos_theta, sin_theta)       #速度只需要进行旋转rotate就ok，因为不管在哪个静止的相对坐标系下，速度的绝对大小是不变的
+        rotate(now_auxiliary_label, cos_theta, sin_theta)      
         now_auxiliary_label[..., 2] = now_auxiliary_label[..., 2] - ref_psi        #各预测目标相对于当前帧heading的label
         
         now_full_agent_n_feature = normal_agent_feature(now_full_agent_n_feature, ref_coor, ref_psi, cos_theta, sin_theta)
@@ -704,9 +667,7 @@ def HDGT_collate_fn(batch, args, is_train):
                 last_index_of_ones = [np.where(road_agent_mask[agent_id].cumsum() == road_agent_mask[agent_id].sum())[0][0] for agent_id in range(road_agent_mask.shape[0])]
                 last_index_of_ones = np.stack(last_index_of_ones)
                 road_ref_coor = np.array([road_agent_feature[id, last_index_of_ones[id], 1:4] for id in range(road_agent_feature.shape[0])])
-                # road_ref_coor = now_agent_feature[-1, -1, 1:4][np.newaxis, ...].copy()
                 road_ref_psi = np.array([road_agent_feature[id, last_index_of_ones[id], 6] for id in range(road_agent_feature.shape[0])])[:, np.newaxis]
-                # road_ref_psi = np.array([now_agent_feature[-1, -1, 6]])[:, np.newaxis].copy()
                 road_sin_theta = np.sin(-road_ref_psi)
                 road_cos_theta = np.cos(-road_ref_psi)
                 road_agent_feature = normal_agent_feature(road_agent_feature, road_ref_coor, road_ref_psi, road_cos_theta, road_sin_theta)
@@ -722,7 +683,7 @@ def HDGT_collate_fn(batch, args, is_train):
             now_other_agent_n_feature = normal_agent_feature(now_other_agent_n_feature, ref_coor, ref_psi, cos_theta, sin_theta)
             now_all_agent_n_feature = np.concatenate([now_all_agent_n_feature, now_other_agent_n_feature], axis=0)
             if args.use_planning:
-                now_all_agent_n_feature = np.concatenate([now_all_agent_n_feature, np.zeros((now_all_agent_n_feature.shape[0], 25, now_all_agent_n_feature.shape[2]))], axis=1)  # todo:有规划时解除注释
+                now_all_agent_n_feature = np.concatenate([now_all_agent_n_feature, np.zeros((now_all_agent_n_feature.shape[0], 25, now_all_agent_n_feature.shape[2]))], axis=1)  
                 now_all_agent_n_feature[fut_agent_index, 16:, :] = new_fut_agent_fea
         g.ndata["a_n_fea"] = {"agent": torch.as_tensor((now_all_agent_n_feature).astype(np.float32))}
         g.ndata["a_n_type"] = {"agent": torch.as_tensor((now_agent_type).astype(np.int32)).long()}
@@ -745,9 +706,6 @@ def HDGT_collate_fn(batch, args, is_train):
 
             ## Polyline Feature
             if len(polylinelaneindex) > 0:
-                # if len(now_lane_n_stop_index) != 0:
-                #     out_lane_n_stop_sign_fea_lis.append(now_lane_n_stop_feature)
-                #     out_lane_n_stop_sign_index_lis.append(np.array(now_lane_n_stop_index) + lane_n_cnt)
                 if len(now_lane_n_signal_index) != 0:
                     out_lane_n_signal_fea_lis.append(now_lane_n_signal_feature)
                     out_lane_n_signal_index_lis.append(np.array(now_lane_n_signal_index)+lane_n_cnt)
@@ -760,11 +718,8 @@ def HDGT_collate_fn(batch, args, is_train):
         out_auxiliary_label_future_lis.append(now_auxiliary_label_future)
         if args.use_road_obs:
             out_road_feature_mask_lis.append(road_agent_mask)
-        # if args.use_planning:
-        #     fut_mask_lis.append(fut_mask)
-#        out_av_fut_lis.append(now_av_fut)  #todo:无规划模块的时候注释掉
 
-    output_dic = {}                              #12.4：看到这里啦
+    output_dic = {}                              
     #0-x, 1-y, 2-vx, 3-vy, 4-cos_psi, 5-sin_psi, 6-length, 7-width, 8-type, 9-mask
     output_dic["cuda_tensor_lis"] = ["graph_lis"]
     if args.use_planning:
@@ -780,30 +735,23 @@ def HDGT_collate_fn(batch, args, is_train):
         if len(out_lane_n_stop_sign_fea_lis) > 0:
             output_dic["cuda_tensor_lis"] += ["lane_n_stop_sign_fea_lis", "lane_n_stop_sign_index_lis"]
             out_lane_n_stop_sign_index_lis = np.concatenate(out_lane_n_stop_sign_index_lis, axis=0)
-            output_dic["lane_n_stop_sign_fea_lis"] = torch.as_tensor(
-                np.concatenate(out_lane_n_stop_sign_fea_lis, axis=0).astype(np.float32))
-            output_dic["lane_n_stop_sign_index_lis"] = torch.as_tensor(
-                out_lane_n_stop_sign_index_lis.astype(np.int32)).long()
+            output_dic["lane_n_stop_sign_fea_lis"] = torch.as_tensor(np.concatenate(out_lane_n_stop_sign_fea_lis, axis=0).astype(np.float32))
+            output_dic["lane_n_stop_sign_index_lis"] = torch.as_tensor(out_lane_n_stop_sign_index_lis.astype(np.int32)).long()
 
         if len(out_lane_n_signal_fea_lis) > 0:
             output_dic["cuda_tensor_lis"] += ["lane_n_signal_fea_lis", "lane_n_signal_index_lis"]
             out_lane_n_signal_index_lis = np.concatenate(out_lane_n_signal_index_lis, axis=0)
-            output_dic["lane_n_signal_fea_lis"] = torch.as_tensor(
-                np.concatenate(out_lane_n_signal_fea_lis, axis=0).astype(np.float32))
+            output_dic["lane_n_signal_fea_lis"] = torch.as_tensor(np.concatenate(out_lane_n_signal_fea_lis, axis=0).astype(np.float32))
             output_dic["lane_n_signal_index_lis"] = torch.as_tensor(out_lane_n_signal_index_lis.astype(np.int32)).long()
     output_dic["label_lis"] = torch.as_tensor(np.concatenate(out_label_lis, axis=0).astype(np.float32))
-    output_dic["auxiliary_label_lis"] = torch.as_tensor(
-        np.concatenate(out_auxiliary_label_lis, axis=0).astype(np.float32))
-    output_dic["auxiliary_label_future_lis"] = torch.as_tensor(
-        np.concatenate(out_auxiliary_label_future_lis, axis=0).astype(np.float32))
-    #    output_dic["av_fut_lis"] = torch.as_tensor(np.concatenate(out_av_fut_lis, axis=0).astype(np.float32))   #todo:无规划模块块的时候注释掉
+    output_dic["auxiliary_label_lis"] = torch.as_tensor(np.concatenate(out_auxiliary_label_lis, axis=0).astype(np.float32))
+    output_dic["auxiliary_label_future_lis"] = torch.as_tensor(np.concatenate(out_auxiliary_label_future_lis, axis=0).astype(np.float32))
 
     output_dic["label_mask_lis"] = torch.as_tensor(np.concatenate(out_label_mask_lis, axis=0).astype(np.float32))
     if args.use_road_obs:
         output_dic["road_mask"] = torch.as_tensor(np.concatenate(out_road_feature_mask_lis, axis=0).astype(np.float32))
 
-    output_g = dgl.batch(
-        out_graph_lis)  # dgl.batch()接受一个图形（Graph）对象的列表作为输入参数，然后将这些图形合并成一个大的图形。这个合并后的大图形中，原始图形中的节点和边会被整合到一个更大的图形结构中，同时保留了原始图形之间的隔离性，以便在模型中进行区分和处理
+    output_g = dgl.batch(out_graph_lis)  # dgl.batch()接受一个图形（Graph）对象的列表作为输入参数，然后将这些图形合并成一个大的图形。这个合并后的大图形中，原始图形中的节点和边会被整合到一个更大的图形结构中，同时保留了原始图形之间的隔离性，以便在模型中进行区分和处理
     a_e_type_dict = {}
     if args.use_map:
         if args.use_planning:
@@ -852,6 +800,5 @@ def HDGT_collate_fn(batch, args, is_train):
         output_dic["fname"] = []
         for _ in range(len(all_filename)):
             output_dic["fname"] += [all_filename[_]] * pred_num_lis[_]  # 每个预测目标对应的raw数据集文件名
-        # output_dic["file_name"] = file_name_lis
     del batch
     return output_dic
