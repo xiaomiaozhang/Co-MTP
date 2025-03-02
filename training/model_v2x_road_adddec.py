@@ -636,7 +636,6 @@ class AgentHetGNN(nn.Module):
                     self.etype_dic[etype] = (partial(self.message_func, etype=etype), partial(self.reduce_func, etype=etype))
                 self.etype2hidden_name.update({"other": "a_e_hidden", "l2a": "l_e_hidden", "g2a": "g_e_hidden", "planning": "a_e_hidden"})
                 self.etype2src_name.update({"other": "agent", "l2a": "lane", "g2a": "polygon", "planning": "agent"})
-
             else:
                 for etype in ["other", "l2a", "g2a"]:
                     self.etype_dic[etype] = (partial(self.message_func, etype=etype), partial(self.reduce_func, etype=etype))
@@ -654,7 +653,6 @@ class AgentHetGNN(nn.Module):
                     partial(self.message_func, etype=etype), partial(self.reduce_func, etype=etype))
                 self.etype2hidden_name.update({"other": "a_e_hidden", "planning": "a_e_hidden"})
                 self.etype2src_name.update({"other": "agent", "planning": "agent"})
-
             else:
                 for etype in ["other"]:
                     self.etype_dic[etype] = (
@@ -664,8 +662,7 @@ class AgentHetGNN(nn.Module):
             self.edge_MLP = {}
         self.edge_MLP["self"] = nn.ModuleList([MLP(args.hidden_dim, args.hidden_dim, args.hidden_dim, nn.LayerNorm, dropout=args.dropout, prenorm=True)
         for _ in range(3)
-        ])
-        
+        ])        
         self.edge_MLP["other"] = nn.ModuleList([MLP(args.hidden_dim*3, args.hidden_dim*4, args.hidden_dim, nn.LayerNorm, dropout=args.dropout, prenorm=True)
         for _ in range(3)
         ])
@@ -687,36 +684,30 @@ class AgentHetGNN(nn.Module):
                     q = torch.zeros((input_dic["graph_lis"].ndata["a_n_hidden"]["agent"].shape[0], self.n_head * self.head_dim * 5), device=self.device)
                     for agent_type_index in range(3):
                         if len(self.a_n_type_lis[agent_type_index]) != 0: 
-                            q[self.a_n_type_lis[agent_type_index]] = self.wqs[agent_type_index](
-                                input_q[self.a_n_type_lis[agent_type_index]][..., 0])
+                            q[self.a_n_type_lis[agent_type_index]] = self.wqs[agent_type_index](input_q[self.a_n_type_lis[agent_type_index]][..., 0])
                     other_q, lane_q, polygon_q, planning_q, view_q = q.view(input_q.shape[0], self.n_head, self.head_dim * 5).split(dim=-1, split_size=self.head_dim)
                     input_dic["graph_lis"].nodes["agent"].data["view_q"] = view_q
                 else:
                     q = torch.zeros((input_dic["graph_lis"].ndata["a_n_hidden"]["agent"].shape[0], self.n_head * self.head_dim * 4), device=self.device)
-                # q_planning = torch.zeros((input_dic["graph_lis"].ndata["a_n_hidden"]["agent"].shape[0], self.n_head * self.head_dim), device=self.device)
                     for agent_type_index in range(3):
-                        if len(self.a_n_type_lis[agent_type_index]) != 0:          #12.10：看到这里啦！
+                        if len(self.a_n_type_lis[agent_type_index]) != 0:          
                             q[self.a_n_type_lis[agent_type_index]] = self.wqs[agent_type_index](input_q[self.a_n_type_lis[agent_type_index]][..., 0])
-                        # q_planning[self.a_n_type_lis[agent_type_index]] = self.wqs_planning[agent_type_index](input_q[self.a_n_type_lis[agent_type_index]][..., 1])
                     other_q, lane_q, polygon_q, planning_q = q.view(input_q.shape[0], self.n_head, self.head_dim*4).split(dim=-1, split_size=self.head_dim)
-                # planning_q = q_planning.view(input_q.shape[0], self.n_head, self.head_dim)
                 input_dic["graph_lis"].nodes["agent"].data["planning_q"] = planning_q
             else:
                 input_q = input_dic["graph_lis"].ndata["a_n_hidden"]["agent"]
                 if self.use_road_obs:
                     q = torch.zeros((input_dic["graph_lis"].ndata["a_n_hidden"]["agent"].shape[0], self.n_head * self.head_dim * 4), device=self.device)
                     for agent_type_index in range(3):
-                        if len(self.a_n_type_lis[agent_type_index]) != 0:  # 12.10：看到这里啦！
+                        if len(self.a_n_type_lis[agent_type_index]) != 0: 
                             q[self.a_n_type_lis[agent_type_index]] = self.wqs[agent_type_index](input_q[self.a_n_type_lis[agent_type_index]])
                     other_q, lane_q, polygon_q, view_q = q.view(input_q.shape[0], self.n_head, self.head_dim * 4).split(dim=-1, split_size=self.head_dim)
                     input_dic["graph_lis"].nodes["agent"].data["view_q"] = view_q
                 else:
                     q = torch.zeros((input_dic["graph_lis"].ndata["a_n_hidden"]["agent"].shape[0], self.n_head * self.head_dim * 3), device=self.device)
-                    # q_planning = torch.zeros((input_dic["graph_lis"].ndata["a_n_hidden"]["agent"].shape[0], self.n_head * self.head_dim), device=self.device)
                     for agent_type_index in range(3):
-                        if len(self.a_n_type_lis[agent_type_index]) != 0:  # 12.10：看到这里啦！
+                        if len(self.a_n_type_lis[agent_type_index]) != 0:  
                             q[self.a_n_type_lis[agent_type_index]] = self.wqs[agent_type_index](input_q[self.a_n_type_lis[agent_type_index]])
-                        # q_planning[self.a_n_type_lis[agent_type_index]] = self.wqs_planning[agent_type_index](input_q[self.a_n_type_lis[agent_type_index]][..., 1])
                     other_q, lane_q, polygon_q = q.view(input_q.shape[0], self.n_head, self.head_dim * 3).split(dim=-1, split_size=self.head_dim)
 
             input_dic["graph_lis"].nodes["agent"].data["other_q"] = other_q
@@ -763,17 +754,14 @@ class AgentHetGNN(nn.Module):
                     if self.use_planning:
                         planning_out_fea = self.attn_fcs[agent_type_index]["planning"](planning_out_tmp_in[self.a_n_type_lis[agent_type_index]])
                     self_fea = self.self_fc[agent_type_index](input_self_fea[self.a_n_type_lis[agent_type_index]])
-
                     if self.use_map:
                         if self.use_planning:
                             out_his_n_fea = torch.stack([self_fea, other_out_fea, lane_out_fea, polygon_out_fea, planning_out_fea], dim=1)
                             if self.use_road_obs:
                                 out_his_n_fea = torch.cat([out_his_n_fea, view_out_fea.unsqueeze(1)], dim=1)
-                                out_his_n_fea = self.out_fc_view[agent_type_index](out_his_n_fea.view(out_his_n_fea.shape[0], -1)) +\
-                                                input_dic["graph_lis"].nodes["agent"].data["a_n_hidden"][self.a_n_type_lis[agent_type_index]][..., 0]
+                                out_his_n_fea = self.out_fc_view[agent_type_index](out_his_n_fea.view(out_his_n_fea.shape[0], -1)) + input_dic["graph_lis"].nodes["agent"].data["a_n_hidden"][self.a_n_type_lis[agent_type_index]][..., 0]
                             else:
-                                out_his_n_fea = self.out_fc[agent_type_index](out_his_n_fea.view(out_his_n_fea.shape[0], -1)) + \
-                                                input_dic["graph_lis"].nodes["agent"].data["a_n_hidden"][self.a_n_type_lis[agent_type_index]][..., 0]
+                                out_his_n_fea = self.out_fc[agent_type_index](out_his_n_fea.view(out_his_n_fea.shape[0], -1)) + input_dic["graph_lis"].nodes["agent"].data["a_n_hidden"][self.a_n_type_lis[agent_type_index]][..., 0]
                             out_his_n_fea = self.out_ffn[agent_type_index](out_his_n_fea)
                             out_planning_n_fea = planning_out_fea + input_dic["graph_lis"].nodes["agent"].data["a_n_hidden"][self.a_n_type_lis[agent_type_index]][..., 1]
                             out_planning_n_fea = self.out_ffn[agent_type_index](out_planning_n_fea)
@@ -782,11 +770,9 @@ class AgentHetGNN(nn.Module):
                             out_n_fea = torch.stack([self_fea, other_out_fea, lane_out_fea, polygon_out_fea], dim=1)
                             if self.use_road_obs:
                                 out_n_fea = torch.cat([out_n_fea, view_out_fea.unsqueeze(1)], dim=1)
-                                out_n_fea = self.out_fc_view[agent_type_index](out_n_fea.view(out_n_fea.shape[0], -1)) +\
-                                                input_dic["graph_lis"].nodes["agent"].data["a_n_hidden"][self.a_n_type_lis[agent_type_index]]
+                                out_n_fea = self.out_fc_view[agent_type_index](out_n_fea.view(out_n_fea.shape[0], -1)) + input_dic["graph_lis"].nodes["agent"].data["a_n_hidden"][self.a_n_type_lis[agent_type_index]]
                             else:
-                                out_n_fea = self.out_fc[agent_type_index](out_n_fea.view(out_n_fea.shape[0], -1)) +\
-                                            input_dic["graph_lis"].nodes["agent"].data["a_n_hidden"][self.a_n_type_lis[agent_type_index]]
+                                out_n_fea = self.out_fc[agent_type_index](out_n_fea.view(out_n_fea.shape[0], -1)) + input_dic["graph_lis"].nodes["agent"].data["a_n_hidden"][self.a_n_type_lis[agent_type_index]]
                             out_n_fea = self.out_ffn[agent_type_index](out_n_fea)
                     else:
                         if self.use_planning:
@@ -818,7 +804,7 @@ class AgentHetGNN(nn.Module):
                 for agent_type_index in range(3):
                     if len(self.a_e_type_dict["self"][agent_type_index]) != 0:
                         self_e_fea_tmp_out[self.a_e_type_dict["self"][agent_type_index]] = self.edge_MLP["self"][agent_type_index](self_e_fea_tmp_in[self.a_e_type_dict["self"][agent_type_index]])
-                    if len(self.a_e_type_dict["other"][agent_type_index]) != 0:       #12.11：看到这里啦！
+                    if len(self.a_e_type_dict["other"][agent_type_index]) != 0:      
                         other_e_fea_tmp_out[self.a_e_type_dict["other"][agent_type_index]] = self.edge_MLP["other"][agent_type_index](other_e_fea_tmp_in[self.a_e_type_dict["other"][agent_type_index]])
                     if len(self.a_e_type_dict["planning"][agent_type_index]) != 0:
                         planning_e_fea_tmp_out[self.a_e_type_dict["planning"][agent_type_index]] = self.edge_MLP["planning"][agent_type_index](planning_e_fea_tmp_in[self.a_e_type_dict["planning"][agent_type_index]])
@@ -851,7 +837,7 @@ class AgentHetGNN(nn.Module):
                 for agent_type_index in range(3):
                     if len(self.a_e_type_dict["self"][agent_type_index]) != 0:
                         self_e_fea_tmp_out[self.a_e_type_dict["self"][agent_type_index]] = self.edge_MLP["self"][agent_type_index](self_e_fea_tmp_in[self.a_e_type_dict["self"][agent_type_index]])
-                    if len(self.a_e_type_dict["other"][agent_type_index]) != 0:  # 12.11：看到这里啦！
+                    if len(self.a_e_type_dict["other"][agent_type_index]) != 0:  
                         other_e_fea_tmp_out[self.a_e_type_dict["other"][agent_type_index]] = self.edge_MLP["other"][agent_type_index](other_e_fea_tmp_in[self.a_e_type_dict["other"][agent_type_index]])
                 out_e_fea_lis.append(self_e_fea_tmp_out + input_dic["graph_lis"].edges["self"].data["a_e_hidden"])
                 out_e_fea_lis.append(other_e_fea_tmp_out + input_dic["graph_lis"].edges["other"].data["a_e_hidden"])
@@ -915,7 +901,7 @@ class HDGT_encoder(nn.Module):
         self.use_map = args.use_map
         self.use_planning = args.use_planning
         self.hidden_dim = args.hidden_dim
-        self.shared_coor_encoder = MLP(d_in=3, d_hid=args.hidden_dim//8, d_out=args.hidden_dim//4, norm=None) ## Encode x,y,z     #//8是因为有8个GPU并行运算吗？需要后面再确认一下
+        self.shared_coor_encoder = MLP(d_in=3, d_hid=args.hidden_dim//8, d_out=args.hidden_dim//4, norm=None) ## Encode x,y,z   
         self.shared_rel_encoder = MLP(d_in=5, d_hid=args.hidden_dim//8, d_out=args.hidden_dim//4, norm=None) ## Encode Delta (x, y, z, cos(psi), sin(psi))
         
         self.agent_emb = Agent2embedding(input_dim, args)
@@ -939,11 +925,9 @@ class HDGT_encoder(nn.Module):
         self.lane_gnns = torch.nn.ModuleList([LaneHetGNN(args=args) for _ in range(self.num_of_gnn_layer)])
         self.agent_gnns = torch.nn.ModuleList([AgentHetGNN(args=args) for _ in range(self.num_of_gnn_layer)])
 
-
     def forward(self, input_dic):
         ## Init Agent Node
         if self.use_planning:
-            # fut_mask = input_dic["fut_mask_lis"]
             agent_n_emb = self.agent_emb(input_dic, self.shared_coor_encoder)
             if self.use_road_obs:
                 road_agent_n_emb = self.road_agent_emb(input_dic, self.shared_coor_encoder)
@@ -953,7 +937,6 @@ class HDGT_encoder(nn.Module):
                     if len(road_n_type_indices[_]) == 0:
                         continue
                     road_n_fea[road_n_type_indices[_]] = self.attention_temporal_encoder[_](road_agent_n_emb[road_n_type_indices[_]], input_dic["road_mask"][road_n_type_indices[_]])
-            # plan_index = torch.where(fut_mask == 1)[0]
             plan_index = input_dic["fut_agent_index"]
             plan_index = plan_index.long()
             plan_agent_n_emb = agent_n_emb[plan_index, :, 16:]
@@ -969,9 +952,6 @@ class HDGT_encoder(nn.Module):
             agent_n_his_fea = agent_n_his_fea[..., np.newaxis]
             agent_n_fea = torch.cat([agent_n_his_fea, torch.zeros((agent_n_his_fea.shape[0], agent_n_his_fea.shape[1], 1), device="cuda:"+str(input_dic["gpu"]))], dim=-1)
             agent_n_fea[plan_index, :, 1] = agent_n_fut_fea
-#            merge = torch.cat((agent_n_his_fea[plan_index, :, np.newaxis], agent_n_fut_fea[..., np.newaxis]), dim=2)
-#            agent_n_his_fea[plan_index] = self.pool_after_merge(merge)[..., 0]
-#            agent_n_fea = merge
         else:
             agent_n_emb = self.agent_emb(input_dic, self.shared_coor_encoder)
             if self.use_road_obs:
@@ -996,7 +976,7 @@ class HDGT_encoder(nn.Module):
                 agent_his_e_fea_rel_pos = torch.cat([input_dic["graph_lis"].edata["a_e_fea"][_] for _ in [('agent', 'self', 'agent'), ('agent', 'other', 'agent'), ('agent', 'a2l', 'lane')]], dim=0)
                 agent_his_e_type_indices = [torch.where(agent_his_e_type_lis == _) for _ in range(3)]
                 agent_his_e_srcn_fea = torch.cat([agent_n_fea[input_dic["graph_lis"].edges(etype=_)[0], :, 0] for _ in ["self", "other", "a2l"]], dim=0)
-                agent_his_e_fea_relpos = self.shared_rel_encoder(agent_his_e_fea_rel_pos)  # 12.6：看到这里啦！
+                agent_his_e_fea_relpos = self.shared_rel_encoder(agent_his_e_fea_rel_pos)  
                 agent_his_e_fea = torch.zeros((agent_his_e_fea_relpos.shape[0], self.hidden_dim),device="cuda:" + str(input_dic["gpu"]))
                 for _ in range(3):
                     agent_his_e_fea[agent_his_e_type_indices[_]] = self.agent_e_fea_MLPs[_](torch.cat([agent_his_e_fea_relpos[agent_his_e_type_indices[_]], agent_his_e_srcn_fea[agent_his_e_type_indices[_]]], dim=-1))
@@ -1005,7 +985,7 @@ class HDGT_encoder(nn.Module):
                 agent_plan_e_fea_rel_pos = input_dic["graph_lis"].edata["a_e_fea"][('agent', 'planning', 'agent')]
                 agent_plan_e_type_indices = [torch.where(agent_plan_e_type_lis == _) for _ in range(3)]
                 agent_plan_e_srcn_fea =agent_n_fea[input_dic["graph_lis"].edges(etype="planning")[0], :, 1]
-                agent_plan_e_fea_relpos = self.shared_rel_encoder(agent_plan_e_fea_rel_pos)  # 12.6：看到这里啦！
+                agent_plan_e_fea_relpos = self.shared_rel_encoder(agent_plan_e_fea_rel_pos) 
                 agent_plan_e_fea = torch.zeros((agent_plan_e_fea_relpos.shape[0], self.hidden_dim), device="cuda:" + str(input_dic["gpu"]))
                 for _ in range(3):
                     agent_plan_e_fea[agent_plan_e_type_indices[_]] = self.agent_e_fea_MLPs[_](torch.cat([agent_plan_e_fea_relpos[agent_plan_e_type_indices[_]], agent_plan_e_srcn_fea[agent_plan_e_type_indices[_]]], dim=-1))
@@ -1019,7 +999,7 @@ class HDGT_encoder(nn.Module):
                     road_view_e_fea_rel_pos = input_dic["graph_lis"].edata["a_e_fea"][("road", "view", "agent")]
                     road_view_e_type_indices = [torch.where(road_view_e_type_lis == _)[0] for _ in range(3)]
                     road_view_e_srcn_fea = road_n_fea[input_dic["graph_lis"].edges(etype="view")[0], ...]
-                    road_view_e_fea_relpos = self.shared_rel_encoder(road_view_e_fea_rel_pos)  # 12.6：看到这里啦！
+                    road_view_e_fea_relpos = self.shared_rel_encoder(road_view_e_fea_rel_pos)  
                     road_view_e_fea = torch.zeros((road_view_e_fea_relpos.shape[0], self.hidden_dim), device="cuda:" + str(input_dic["gpu"]))
                     for _ in range(3):
                         road_view_e_fea[road_view_e_type_indices[_]] = self.agent_e_fea_MLPs[_](torch.cat([road_view_e_fea_relpos[road_view_e_type_indices[_]],
@@ -1031,7 +1011,7 @@ class HDGT_encoder(nn.Module):
                 agent_e_fea_rel_pos = torch.cat([input_dic["graph_lis"].edata["a_e_fea"][_] for _ in [('agent', 'self', 'agent'), ('agent', 'other', 'agent'), ('agent', 'a2l', 'lane')]], dim=0)
                 agent_e_type_indices = [torch.where(agent_e_type_lis == _) for _ in range(3)]
                 agent_e_src_n_fea = torch.cat([agent_n_fea[input_dic["graph_lis"].edges(etype=_)[0],...]  for _ in ["self", "other", "a2l"]], dim=0)    #各edge起点agent的特征
-                agent_e_fea_rel_pos = self.shared_rel_encoder(agent_e_fea_rel_pos)        #12.6：看到这里啦！
+                agent_e_fea_rel_pos = self.shared_rel_encoder(agent_e_fea_rel_pos)     
                 agent_e_fea = torch.zeros((agent_e_fea_rel_pos.shape[0], self.hidden_dim), device="cuda:"+str(input_dic["gpu"]))
                 for _ in range(3):
                     agent_e_fea[agent_e_type_indices[_]] = self.agent_e_fea_MLPs[_](torch.cat([agent_e_fea_rel_pos[agent_e_type_indices[_]], agent_e_src_n_fea[agent_e_type_indices[_]]], dim=-1))
@@ -1039,13 +1019,12 @@ class HDGT_encoder(nn.Module):
                 agent_e_num_lis_by_etype = np.cumsum([0] + [len(input_dic["graph_lis"].edata["a_e_type"][_]) for _ in [('agent', 'self', 'agent'), ('agent', 'other', 'agent'), ('agent', 'a2l', 'lane')]])
                 for _index, _ in enumerate([('agent', 'self', 'agent'), ('agent', 'other', 'agent'), ('agent', 'a2l', 'lane')]):
                     input_dic["graph_lis"].edata["a_e_hidden"] = {_:agent_e_fea[agent_e_num_lis_by_etype[_index]:agent_e_num_lis_by_etype[_index+1]]}  #default
-     #           input_dic["graph_lis"].edata["a_e_hidden"] = {_: agent_e_fea[agent_e_type_indices[_index]]}     #correct
                 if self.use_road_obs:
                     road_view_e_type_lis = input_dic["graph_lis"].edata["a_e_type"][("road", "view", "agent")]
                     road_view_e_fea_rel_pos = input_dic["graph_lis"].edata["a_e_fea"][("road", "view", "agent")]
                     road_view_e_type_indices = [torch.where(road_view_e_type_lis == _)[0] for _ in range(3)]
                     road_view_e_srcn_fea = road_n_fea[input_dic["graph_lis"].edges(etype="view")[0], ...]
-                    road_view_e_fea_relpos = self.shared_rel_encoder(road_view_e_fea_rel_pos)  # 12.6：看到这里啦！
+                    road_view_e_fea_relpos = self.shared_rel_encoder(road_view_e_fea_rel_pos) 
                     road_view_e_fea = torch.zeros((road_view_e_fea_relpos.shape[0], self.hidden_dim), device="cuda:" + str(input_dic["gpu"]))
                     for _ in range(3):
                         road_view_e_fea[road_view_e_type_indices[_]] = self.agent_e_fea_MLPs[_](torch.cat([road_view_e_fea_relpos[road_view_e_type_indices[_]],
@@ -1062,7 +1041,7 @@ class HDGT_encoder(nn.Module):
                 agent_his_e_fea_rel_pos = torch.cat([input_dic["graph_lis"].edata["a_e_fea"][_] for _ in [('agent', 'self', 'agent'), ('agent', 'other', 'agent')]], dim=0)
                 agent_his_e_type_indices = [torch.where(agent_his_e_type_lis == _) for _ in range(3)]
                 agent_his_e_srcn_fea = torch.cat([agent_n_fea[input_dic["graph_lis"].edges(etype=_)[0], :, 0] for _ in ["self", "other"]], dim=0)
-                agent_his_e_fea_relpos = self.shared_rel_encoder(agent_his_e_fea_rel_pos)  # 12.6：看到这里啦！
+                agent_his_e_fea_relpos = self.shared_rel_encoder(agent_his_e_fea_rel_pos)  
                 agent_his_e_fea = torch.zeros((agent_his_e_fea_relpos.shape[0], self.hidden_dim),device="cuda:" + str(input_dic["gpu"]))
                 for _ in range(3):
                     agent_his_e_fea[agent_his_e_type_indices[_]] = self.agent_e_fea_MLPs[_](torch.cat([agent_his_e_fea_relpos[agent_his_e_type_indices[_]], agent_his_e_srcn_fea[agent_his_e_type_indices[_]]], dim=-1))
@@ -1071,7 +1050,7 @@ class HDGT_encoder(nn.Module):
                 agent_plan_e_fea_rel_pos = input_dic["graph_lis"].edata["a_e_fea"][('agent', 'planning', 'agent')]
                 agent_plan_e_type_indices = [torch.where(agent_plan_e_type_lis == _) for _ in range(3)]
                 agent_plan_e_srcn_fea =agent_n_fea[input_dic["graph_lis"].edges(etype="planning")[0], :, 1]
-                agent_plan_e_fea_relpos = self.shared_rel_encoder(agent_plan_e_fea_rel_pos)  # 12.6：看到这里啦！
+                agent_plan_e_fea_relpos = self.shared_rel_encoder(agent_plan_e_fea_rel_pos)  
                 agent_plan_e_fea = torch.zeros((agent_plan_e_fea_relpos.shape[0], self.hidden_dim), device="cuda:" + str(input_dic["gpu"]))
                 for _ in range(3):
                     agent_plan_e_fea[agent_plan_e_type_indices[_]] = self.agent_e_fea_MLPs[_](torch.cat([agent_plan_e_fea_relpos[agent_plan_e_type_indices[_]], agent_plan_e_srcn_fea[agent_plan_e_type_indices[_]]], dim=-1))
@@ -1085,7 +1064,7 @@ class HDGT_encoder(nn.Module):
                 agent_e_fea_rel_pos = torch.cat([input_dic["graph_lis"].edata["a_e_fea"][_] for _ in [('agent', 'self', 'agent'), ('agent', 'other', 'agent')]], dim=0)
                 agent_e_type_indices = [torch.where(agent_e_type_lis == _) for _ in range(3)]
                 agent_e_src_n_fea = torch.cat([agent_n_fea[input_dic["graph_lis"].edges(etype=_)[0],...]  for _ in ["self", "other", "a2l"]], dim=0)    #各edge起点agent的特征
-                agent_e_fea_rel_pos = self.shared_rel_encoder(agent_e_fea_rel_pos)        #12.6：看到这里啦！
+                agent_e_fea_rel_pos = self.shared_rel_encoder(agent_e_fea_rel_pos)       
                 agent_e_fea = torch.zeros((agent_e_fea_rel_pos.shape[0], self.hidden_dim), device="cuda:"+str(input_dic["gpu"]))
                 for _ in range(3):
                     agent_e_fea[agent_e_type_indices[_]] = self.agent_e_fea_MLPs[_](torch.cat([agent_e_fea_rel_pos[agent_e_type_indices[_]], agent_e_src_n_fea[agent_e_type_indices[_]]], dim=-1))
@@ -1093,7 +1072,6 @@ class HDGT_encoder(nn.Module):
                 agent_e_num_lis_by_etype = np.cumsum([0] + [len(input_dic["graph_lis"].edata["a_e_type"][_]) for _ in [('agent', 'self', 'agent'), ('agent', 'other', 'agent')]])
                 for _index, _ in enumerate([('agent', 'self', 'agent'), ('agent', 'other', 'agent')]):
                     input_dic["graph_lis"].edata["a_e_hidden"] = {_:agent_e_fea[agent_e_num_lis_by_etype[_index]:agent_e_num_lis_by_etype[_index+1]]}  #default
-
         
         for i in range(self.num_of_gnn_layer):
             if self.use_map:
@@ -1147,7 +1125,7 @@ class HDGT_model(nn.Module):
     def forward(self, input_dic):
         output_het_graph = self.encoder(input_dic)
     
-        neighbor_size_lis = input_dic["neighbor_size_lis"]        #每个场景中的agent数量    #12.12：看到这里啦！
+        neighbor_size_lis = input_dic["neighbor_size_lis"]        #每个场景中的agent数量    
         if self.use_planning:
             all_agent_raw_traj = input_dic["graph_lis"].nodes["agent"].data["a_n_fea"][:, :16, :2].clone()
             agent_node_fea = output_het_graph.nodes["agent"].data["a_n_hidden"][..., 0]
@@ -1268,17 +1246,13 @@ class RefineContextLayer(nn.Module):
         if self.use_road_obs:
             all_kv_lis.append(self.wkvs[-1](torch.cat(raw_kv_lis[-1], dim=0)))
         all_kv_lis = [[_[raw_kv_indices[_index][indices_i-1]:raw_kv_indices[_index][indices_i]] for indices_i in range(1, len(raw_kv_indices[_index]))] for _index, _ in enumerate(all_kv_lis)]
-        # all_kv_lis = [torch.cat([all_kv_lis[0][_], all_kv_lis[1][_], all_kv_lis[2][_]], dim=0).view(-1, self.n_head, self.head_dim*2).unsqueeze(1).repeat(1, self.num_prediction, 1, 1).view(-1, self.num_prediction*self.n_head, self.head_dim*2).transpose(0, 1) for _ in range(raw_q.shape[0])]     #list:60  (6*8,n,32*2)
-
         if self.use_planning != True and self.use_road_obs != True:
-            all_kv_lis = [torch.cat([all_kv_lis[0][_], all_kv_lis[1][_], all_kv_lis[2][_]], dim=0).view(-1, self.n_head, self.head_dim*2).unsqueeze(1).repeat(1, self.num_prediction, 1, 1).view(-1, self.num_prediction*self.n_head, self.head_dim*2).transpose(0, 1) for _ in range(raw_q.shape[0])]     #list:60  (6*8,n,32*2)
+            all_kv_lis = [torch.cat([all_kv_lis[0][_], all_kv_lis[1][_], all_kv_lis[2][_]], dim=0).view(-1, self.n_head, self.head_dim*2).unsqueeze(1).repeat(1, self.num_prediction, 1, 1).view(-1, self.num_prediction*self.n_head, self.head_dim*2).transpose(0, 1) for _ in range(raw_q.shape[0])]     
         elif self.use_planning and self.use_road_obs:
-            all_kv_lis = [torch.cat([all_kv_lis[0][_], all_kv_lis[1][_], all_kv_lis[2][_], all_kv_lis[3][_], all_kv_lis[4][_]], dim=0).view(-1, self.n_head, self.head_dim * 2).unsqueeze(
-                1).repeat(1, self.num_prediction, 1, 1).view(-1, self.num_prediction * self.n_head, self.head_dim * 2).transpose(0, 1) for _ in range(raw_q.shape[0])]
+            all_kv_lis = [torch.cat([all_kv_lis[0][_], all_kv_lis[1][_], all_kv_lis[2][_], all_kv_lis[3][_], all_kv_lis[4][_]], dim=0).view(-1, self.n_head, self.head_dim * 2).unsqueeze(1).repeat(1, self.num_prediction, 1, 1).view(-1, self.num_prediction * self.n_head, self.head_dim * 2).transpose(0, 1) for _ in range(raw_q.shape[0])]
         else:
             all_kv_lis = [
-                torch.cat([all_kv_lis[0][_], all_kv_lis[1][_], all_kv_lis[2][_], all_kv_lis[3][_]], dim=0).view(-1, self.n_head, self.head_dim * 2).unsqueeze(
-                    1).repeat(1, self.num_prediction, 1, 1).view(-1, self.num_prediction * self.n_head, self.head_dim * 2).transpose(0, 1) for _ in range(raw_q.shape[0])]
+                torch.cat([all_kv_lis[0][_], all_kv_lis[1][_], all_kv_lis[2][_], all_kv_lis[3][_]], dim=0).view(-1, self.n_head, self.head_dim * 2).unsqueeze(1).repeat(1, self.num_prediction, 1, 1).view(-1, self.num_prediction * self.n_head, self.head_dim * 2).transpose(0, 1) for _ in range(raw_q.shape[0])]
         all_out_q_lis = self.attn_fc(torch.cat([self.attention(q=all_q_lis[_].unsqueeze(1), k=all_kv_lis[_][..., :self.head_dim], v=all_kv_lis[_][..., self.head_dim:])[0].view(-1, self.num_prediction, self.n_head*self.head_dim) if all_kv_lis[_].shape[0]!=0 else torch.zeros_like(raw_q[0:1, :, :]) for _ in range(raw_q.shape[0])], dim=0)) + raw_q      #12.13：看到这里啦！
         return self.ffn(all_out_q_lis)
 
@@ -1304,7 +1278,7 @@ class RefineContextModule(nn.Module):
         with input_dic["graph_lis"].local_scope():
             self.device = "cuda:"+str(input_dic["gpu"])
             if self.use_planning:
-                raw_agent_fea = input_dic["graph_lis"].ndata["a_n_hidden"]["agent"][agent_ids, :, 0]    #todo:为啥调试的时候"raw_agent_fea"一点都不raw，反而和经过了6层GNN后的数据一样嘞？？？
+                raw_agent_fea = input_dic["graph_lis"].ndata["a_n_hidden"]["agent"][agent_ids, :, 0] 
             else:
                 raw_agent_fea = input_dic["graph_lis"].ndata["a_n_hidden"]["agent"][agent_ids]
             num_agent = raw_agent_fea.shape[0]
@@ -1445,8 +1419,6 @@ class RefineDecoder(nn.Module):
 
 
 
-
-
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LambdaLR
 class WarmupLinearSchedule(LambdaLR):
@@ -1490,7 +1462,7 @@ def _no_grad_trunc_normal_(tensor, mean, std, a, b):
 
         # Transform to proper mean, std
         tensor.mul_(std * math.sqrt(2.))
-        tensor.add_(mean)               #？？？以上数学处理过程不是很明白， 回来再康康
+        tensor.add_(mean)              
 
         # Clamp to ensure it's in the proper range
         tensor.clamp_(min=a, max=b)
