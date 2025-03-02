@@ -13,11 +13,9 @@ import re
 import multiprocessing
 
 
-
 class V2XDataset(Dataset):
     def __init__(self, agent_num_lis, data_file, num_current_frame, t_h, d_s, road_prediction):
         self.data_file = data_file
-        # self.data_loader = File_DataLoader(data_file)
         self.num_current_frame = num_current_frame
         self.t_h = t_h
         self.d_s = d_s
@@ -25,50 +23,11 @@ class V2XDataset(Dataset):
         self.k = 0
         self.agent_num_lis = agent_num_lis
     def __getitem__(self, idx):
-        # index = idx[0]
-        # if idx[1] > self.k:
-        #     self.data_loader.loaded_data = None
-        #     self.k += 1
-        # file = self.data_loader.get_data(index // self.num_current_frame if index % self.num_current_frame != 0 else ((index // self.num_current_frame) if index != 0 else 0))
-        # current_frame = index - (index // self.num_current_frame) * self.num_current_frame + self.t_h if index % self.num_current_frame != 0 else self.t_h
-        # sample = {}
-        # sample['fname'] = [file['fname'], current_frame]
-        # sample['agent_feature'] = file['agent_feature'][current_frame][:, ::self.d_s, :]  # todo:下采样取消注释
-        # sample['label'] = file['label'][current_frame][:, ::self.d_s, :]
-        # sample['auxiliary_label'] = file['auxiliary_label'][current_frame][:, ::self.d_s, :]
-        # sample['label_mask'] = file['label_mask'][current_frame][:, ::self.d_s]
-        # sample['pred_num'] = file['pred_num'][current_frame]
-        #     #        print(len(file['other_label'][current_frame]), file['other_label'][current_frame])
-        #     #         sample['other_label'] = file['other_label'][current_frame][:, ::self.d_s, :] if len(file['other_label'][current_frame]) != 0 else []
-        #     #         sample['other_label_mask'] = file['other_label_mask'][current_frame][:, ::self.d_s] if len(file['other_label'][current_frame]) != 0 else []
-        # sample['object_id_lis'] = file['object_id_lis'][current_frame]
-        # sample['agent_type'] = file['agent_type'][current_frame]
-        # if not self.road_prediction:
-        #     sample['AV_fut'] = np.flip(file["AV_fut"][current_frame][:, ::self.d_s, :], axis=1).copy()
-        # sample['map_fea'] = [file['map_fea'][0][current_frame], file['map_fea'][1][current_frame]]
+        
         return idx
     def __len__(self):
         return sum(map(len, self.agent_num_lis))
 
-class File_DataLoader:
-    def __init__(self, data_file):
-        self.data_file = data_file
-        self.current_file_index = 0
-        self.loaded_data = None
-        # self.lock = multiprocessing.Lock()
-
-
-    def load_next(self):
-        with open(self.data_file[self.current_file_index], "rb") as f:
-            self.loaded_data = pickle.load(f)
-        self.current_file_index = (self.current_file_index + 1) % len(self.data_file)
-
-    def get_data(self, index):
-        if self.loaded_data is None:
-            # with self.lock:
-            #     if self.loaded_data is None:
-            self.load_next()
-        return self.loaded_data[index]
 
 ## To make sure each batch has approximately the same number of node
 class BalancedBatchSampler(BatchSampler):
@@ -87,7 +46,6 @@ class BalancedBatchSampler(BatchSampler):
         self.seed_num = seed_num
         self.gpu = gpu
         self.data_file = data_file
-        # self.data_loader = File_DataLoader(data_file)
         self.num_current_frame = args.num_current_frame
         self.t_h = args.t_h
         self.d_s = args.d_s
@@ -106,7 +64,6 @@ class BalancedBatchSampler(BatchSampler):
                 for i in range(len(self.index_lis[k])):
                     random.Random(self.seed_num+i).shuffle(self.index_lis[k][i])
             self.seed_num += 1
-            # for i in range(int(self.gpu * self.sample_per_gpu_lis[k]), int((self.gpu + 1) * self.sample_per_gpu_lis[k])):
             for i in range(len(self.index_lis[k][0])):
                 sample_lis = []
                 for j in range(self.batch_size):
@@ -118,7 +75,7 @@ class BalancedBatchSampler(BatchSampler):
                     if self.is_train:
                         road_data = os.path.join(self.road_obs_data_path, "train", "data")
                     else:
-                        road_data = os.path.join("/data/lixc/hdgt/visual_raw_data/cooperative-vehicle-infrastructure/process_newv2x_rock1/", "val", "data")
+                        road_data = os.path.join(self.road_obs_data_path, "val", "data")
                     road_file = str(file['fname'].split('.')[0]) + ".pkl"
                     if road_file in os.listdir(road_data):
                         with open(os.path.join(road_data, road_file), "rb") as f:
@@ -130,32 +87,27 @@ class BalancedBatchSampler(BatchSampler):
                     else:
                         continue
                     if self.use_road_obs:
-                        delay_frame = current_frame - 0     #todo:延迟
+                        delay_frame = current_frame - 0     #todo:延迟，测试时根据实验条件修改延时时间
                         if delay_frame < 30:
                             continue
                         sample['road_feature'] = road_file['road_feature'][delay_frame][:, ::self.d_s, :]
-                        sample['road_feature'][:, :, 1] = sample['road_feature'][:, :, 1] + 0.2  #todo：噪音
+                        sample['road_feature'][:, :, 1] = sample['road_feature'][:, :, 1] + 0.2  #todo：噪音，测试时根据实验条件修改坐标偏移量
                         sample['road_feature'][:, :, 6] = sample['road_feature'][:, :, 6] + 0.2
                         sample['road_feature_mask'] = road_file['road_feature_mask'][delay_frame][:, ::self.d_s]
                         sample['road_ids'] = road_file['road_ids'][delay_frame]
                         sample['road_type'] = road_file['road_type'][delay_frame]
                     sample['agent_feature'] = file['agent_feature'][current_frame][:, ::self.d_s, :]  # todo:下采样取消注释
-                    # sample['agent_feature'][:, :, 1] = sample['agent_feature'][:, :, 1]  #todo:噪音
-                    # sample['agent_feature'][:, :, 6] = sample['agent_feature'][:, :, 6]
                     sample['label'] = file['label'][current_frame][:, ::self.d_s, :]
                     sample['auxiliary_label'] = file['auxiliary_label'][current_frame][:, ::self.d_s, :]
                     sample['label_mask'] = file['label_mask'][current_frame][:, ::self.d_s]
                     sample['pred_num'] = file['pred_num'][current_frame]
-                    #        print(len(file['other_label'][current_frame]), file['other_label'][current_frame])
-                    #         sample['other_label'] = file['other_label'][current_frame][:, ::self.d_s, :] if len(file['other_label'][current_frame]) != 0 else []
-                    #         sample['other_label_mask'] = file['other_label_mask'][current_frame][:, ::self.d_s] if len(file['other_label'][current_frame]) != 0 else []
                     if self.use_other_fut:
-                        delay_frame = current_frame - 0  # todo:延迟
+                        delay_frame = current_frame - 0  # todo:延迟，测试时根据实验条件修改延时时间
                         if delay_frame < 30:
                             continue
                         if delay_frame in file['other_label']:
                             sample['other_label'] = file['other_label'][delay_frame][:, ::self.d_s, :]
-                            sample['other_label'][:, :, 0] = sample['other_label'][:, :, 0] + 0.2  #todo:噪音
+                            sample['other_label'][:, :, 0] = sample['other_label'][:, :, 0] + 0.2  #todo:噪音，测试时根据实验条件修改坐标偏移量
                             sample['other_auxiliary_label'] = file['other_auxiliary_label'][delay_frame][:, ::self.d_s, :]
                             sample['other_auxiliary_label'][:, :, 2] = sample['other_auxiliary_label'][:, :, 2] + 0.2  #TODO：噪音
                             sample['other_label_mask'] = file['other_label_mask'][delay_frame][:, ::self.d_s]
@@ -177,8 +129,6 @@ class BalancedBatchSampler(BatchSampler):
 
 @torch.no_grad()
 def obtain_dataset(gpu, gpu_count, seed_num, args, data_file, agent_num, is_train):
-#    dataset_path = os.path.join(os.path.dirname(os.getcwd()), "dataset", "V2X-Seq-TFD-Example", "cooperative-vehicle-infrastructure", "process_for_prediction_veh_new")    #os.getcwd：返回当前工作目录；os.path.dirname：去掉文件名，返回目录
-#    dataset_path = "/media/ps/ba50700a-668e-4255-9ec6-a877cfa97e41/zxy/V2X-Seq-TFD/cooperative-vehicle-infrastructure/process_for_prediction_veh/"
     dataset_path = args.data_path
     if args.dev_mode == "True":
         seed_num = 0
