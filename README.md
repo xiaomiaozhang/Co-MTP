@@ -9,9 +9,9 @@ We evaluate the Co-MTP framework on the real-world dataset [V2X-Seq](https://git
 ## Installation
 We suggest using exactly the same environment as provided to avoid any issues:
 
-'''python
-conda creat -n co-mtp python=3.8
-'''
+```python
+conda create -n co-mtp python=3.8
+```
 
 ## Dataset Preparation
 
