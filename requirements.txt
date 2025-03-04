@@ -10,3 +10,5 @@ pyproj==3.3.1
 rich==12.4.4
 scikit_learn==1.1.1
 scipy==1.10.1
+tqdm==4.66.2
+wheel==0.41.2
