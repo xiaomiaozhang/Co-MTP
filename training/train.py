@@ -24,7 +24,7 @@ import io
 import scipy.special
 import scipy.interpolate as interp
 import time
-from waymo_dataset_v2x_road import *
+from dataset_v2x_road import *
 
 parser = argparse.ArgumentParser('Interface for HDGT Training')
 ##### Optimizer - Scheduler
@@ -60,7 +60,8 @@ parser.add_argument('--data_folder', type=str, default="hdgt_v2x_seq", help='tra
 parser.add_argument('--refine_num', type=int, default=5, help='temporally refine the trajectory')
 parser.add_argument('--output_vel', type=str, default="True", help='output in form of velocity') 
 parser.add_argument('--cumsum_vel', type=str, default="True", help='cumulate velocity for reg loss')
-
+parser.add_argument('--gpu_number', type=int, default=4, help='the number of gpu')
+parser.add_argument('--gpu', type=str, default='0,1,2,3', help='The GPU IDs to use')
 
 #### Initialize
 parser.add_argument('--checkpoint', type=str, default="None", help='load checkpoint')
@@ -88,7 +89,7 @@ parser.add_argument('--data_path', type=str, default="/home/zhangxy/Co-MTP/datas
 args = parser.parse_args()
 os.environ["DGLBACKEND"] = "pytorch"
 # 指定使用的 GPU
-os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
 
 class Logger():
@@ -191,7 +192,7 @@ class AverageMeter(object):
 def main():
     args = parser.parse_args()
     ###Distributed
-    gpu_count = 1   #根据需求修改GPU数量
+    gpu_count = args.gpu_number   #根据需求修改GPU数量
     global_seed = int(args.port) ## Import!!!! for coherent data splitting across process
     dataset_path = args.data_path
     # 按顺序打开num记录文件，并生成一个num_lis
@@ -244,7 +245,7 @@ def main():
     for file_name, number in sorted_files:
         val_data_file.append(os.path.join(val_folder_path, file_name))
 
-    ##抽象 试训练
+    ##抽样 试训练
     # train_data_file = random.sample(list(enumerate(train_data_file)), 60)   
     # val_data_file = random.sample(list(enumerate(val_data_file)), 30)    
     # train_agent_num = [train_agent_num[_] for _ in np.array(train_data_file)[:, 0].astype(int)]
@@ -295,7 +296,7 @@ def main_worker(gpu, gpu_count, global_seed, args, train_data_file, val_data_fil
         print(args)
         shutil.copyfile(__file__, os.path.join(log_dir, "train.py"))          #把前者复制到后者的文件中
         shutil.copyfile("model.py", os.path.join(log_dir, "model.py"))
-    model_module = importlib.import_module("model_v2x_road_adddec")      #把model.py文件导入给model_module
+    model_module = importlib.import_module("model")      #把model.py文件导入给model_module
     model = model_module.HDGT_model(input_dim=11, args=args)
     model.apply(model_module.weights_init)   #让model里的模型应用model_module.weights_init里的函数
 
