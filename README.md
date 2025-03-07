@@ -52,7 +52,7 @@ python preprocess/preprocess_road.py --data_root ${DATA_ROOT} --split val
 ## Training & Evaluation
 We trained our model with 4 NVDIA 4090s in 5-6 days with the following command line:
 ```bash
-python train.py --n_epoch 45 --batch_size 24 --val_batch_size 48 --port 49196 --name co-mtp 
+python train.py --n_epoch 45 --batch_size 24 --val_batch_size 48 --port 49196 --use_planning True --v2x_prediction True --use_road_obs True --use_other_fut True --road_prediction False --name co-mtp 
 ```
 
 
