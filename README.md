@@ -24,7 +24,12 @@ pip install -r requirements.txt
 ```
 
 ## Dataset Preparation
+1. Download the dataset V2X-Seq-TFD through the dataset link provided above and save the data into the {Data_root} directory './dataset/V2X-Seq-TFD'.
 
+2. Merge multiple maps into one map
+```bash
+python 
+```
 
 
 ## Training & Evaluation
