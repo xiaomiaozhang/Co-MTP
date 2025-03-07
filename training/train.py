@@ -54,9 +54,7 @@ parser.add_argument('--d_s', type=int, default=2, help='data downsampling')
 parser.add_argument('--tensorboard', action="store_true", help='if use tensorboard (default: True)', default = True)
 
 #### Setting
-parser.add_argument('--agent_drop', type=float, default='0.0', help='the ratio of randomly dropping agent')
-parser.add_argument('--data_folder', type=str, default="hdgt_v2x_seq", help='training set')   
-
+parser.add_argument('--agent_drop', type=float, default='0.0', help='the ratio of randomly dropping agent') 
 parser.add_argument('--refine_num', type=int, default=5, help='temporally refine the trajectory')
 parser.add_argument('--output_vel', type=str, default="True", help='output in form of velocity') 
 parser.add_argument('--cumsum_vel', type=str, default="True", help='cumulate velocity for reg loss')
