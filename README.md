@@ -50,3 +50,16 @@ python preprocess/preprocess_road.py --data_root ${DATA_ROOT} --split val
 ```
 
 ## Training & Evaluation
+We trained our model with 4 NVDIA 4090s in 5-6 days with the following command line:
+```bash
+python 
+```
+
+
+
+
+
+
+
+
+
