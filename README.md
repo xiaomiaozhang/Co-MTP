@@ -24,12 +24,29 @@ pip install -r requirements.txt
 ```
 
 ## Dataset Preparation
-1. Download the dataset V2X-Seq-TFD through the dataset link provided above and save the data into the {Data_root} directory './dataset/V2X-Seq-TFD'.
+1. Download the dataset V2X-Seq-TFD through the dataset link provided above and save the data into the {DATA_ROOT} directory './dataset/V2X-Seq-TFD'
+```bash
+export DATA_ROOT=${PWD}'/dataset/V2X-Seq-TFD'
+```
 
 2. Merge multiple maps into one map
 ```bash
-python 
+python preprocess/maps_merge.py --data_root ${DATA_ROOT}
 ```
 
+3. Preprocess cooperative-view trajectories
+```bash
+python preprocess/fusion_for_prediction.py --data_root ${DATA_ROOT} --split train
+python preprocess/preprocess_v2x.py --data_root ${DATA_ROOT} --split train
+python preprocess/fusion_for_prediction.py --data_root ${DATA_ROOT} --split val
+python preprocess/preprocess_v2x.py --data_root ${DATA_ROOT} --split val
+```
+4. Preprocess infrastructure-view raw trajectories
+```bash
+python preprocess/fusion_for_prediction.py --data_root ${DATA_ROOT} --split train
+python preprocess/preprocess_road.py --data_root ${DATA_ROOT} --split train
+python preprocess/fusion_for_prediction.py --data_root ${DATA_ROOT} --split val
+python preprocess/preprocess_road.py --data_root ${DATA_ROOT} --split val
+```
 
 ## Training & Evaluation
