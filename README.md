@@ -1,4 +1,10 @@
 # Co-MTP: A Cooperative Trajectory Prediction Framework with Multi-Temporal Fusion for Autonomous Driving
+
+[![website](https://img.shields.io/badge/Website-Explore%20Now-blueviolet?style=flat&logo=google-chrome)](https://xiaomiaozhang.github.io/Co-MTP/)
+[![paper](https://img.shields.io/badge/arXiv-Paper-<COLOR>.svg)](https://arxiv.org/abs/2502.16589)
+
+This is the official implementation of ICRA 2025 paper: "Co-MTP: A Cooperative Trajectory Prediction Framework with Multi-Temporal Fusion for Autonomous Driving", [Xinyu Zhang*](), [Zewei Zhou*](https://zewei-zhou.github.io/), [Zhaoyi Wang](https://wi11ione.github.io/), [Yangjie Ji](), [Yanjun Huang](https://www.linkedin.com/in/yanjun-huang-46099b82/), [Hong Chen](https://scholar.google.com/citations?hl=zh-CN&user=n_eA148AAAAJ). (*Indicates Equal Contribution)
+
 ![The overall architecture of Co-MTP.](static/images/overview.jpg)
 
 ## Introduction
@@ -55,9 +61,19 @@ We trained our model with 4 NVDIA 4090s in 5-6 days with the following command l
 python train.py --n_epoch 45 --batch_size 24 --val_batch_size 48 --port 49196 --gpu_number 4 --gpu 0,1,2,3 --use_planning True --v2x_prediction True --use_road_obs True --use_other_fut True --road_prediction False --name co-mtp 
 ```
 
+## Citation
+If you find this repository useful for your research, please consider giving us a star 🌟 and citing our paper.
+ ```bibtex
+@article{zhou2024v2xpnp,
+  title={Co-MTP: A Cooperative Trajectory Prediction Framework with Multi-Temporal Fusion for Autonomous Driving},
+  author={Zhang, Xinyu and Zhou, Zewei and Wang, Zhaoyi and Ji, Yangjie and Huang, Yanjun and Chen, Hong},
+  journal={arXiv preprint arXiv:2502.16589},
+  year={2025}
+}
+```
 
-
-
+## Contact
+If you have any questions or suggestions, please feel free to open an issue or contact us (*2332922@tongji.edu.cn* or *zeweizhou@ucla.edu*).
 
 
 
