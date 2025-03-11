@@ -64,7 +64,7 @@ python train.py --n_epoch 45 --batch_size 24 --val_batch_size 48 --port 49196 --
 ## Citation
 If you find this repository useful for your research, please consider giving us a star 🌟 and citing our paper.
  ```bibtex
-@article{zhou2024v2xpnp,
+@article{zhang2025co,
   title={Co-MTP: A Cooperative Trajectory Prediction Framework with Multi-Temporal Fusion for Autonomous Driving},
   author={Zhang, Xinyu and Zhou, Zewei and Wang, Zhaoyi and Ji, Yangjie and Huang, Yanjun and Chen, Hong},
   journal={arXiv preprint arXiv:2502.16589},
